@@ -17,7 +17,7 @@ data_group <- read_excel("./01_Data/All_group_info.xlsx")
 table(data_group$group)
 data_group <- as.data.frame(data_group)
 #data_group <- data_group[-grep("4W",data_group$id),] # 删除4w样本
-data_group$group <- gsub("_WT","",data_group$group)
+data_group$group <- gsub("_VEN","",data_group$group)
 table(data_group$group)
 # 配色设置
 # 配色设置
@@ -30,7 +30,6 @@ rownames(data_group) <- data_group$id
 data_input <- read.csv("./01_Data/report.pg_matrix.csv")
 data_input <- as.data.frame(data_input)
 rownames(data_input) <- data_input$Protein.Group
-data_input <- data_input[,-grep("4W",colnames(data_input))] # 删除4w样本
 
 # 保留前四列注释
 data_anno <- data_input[,1:4]
@@ -90,7 +89,7 @@ data_fill <- data_input
 
 # 2. Normalization -----------------------------------------------------------
 # 设置输出目录
-dir.create("./03_Result/QC/OCI_AML2")
+#dir.create("./03_Result/")
 dir <- "./03_Result/QC/ALL/"
 
 ## 2.1 Intensity normalization ----
@@ -123,6 +122,7 @@ write.csv(data_fill_normalization,file = "./01_Data/report.pg_matrix_fill_norma.
 # 3. QC --------------------------------------------------------------------------
 
 ## 3.1 Boxplot -----------------------------------------------------------------
+# 函数内有log2（）
 pdf(file = paste0(dir,"QC_boxplot_non-normalized.pdf"),
     width = 6,
     height = 4)
@@ -131,6 +131,7 @@ QC_boxplot(2 ^ data_before,data_group = data_group,
            value_colour = value_colour,
            title = "Non-normalized data")
 dev.off()
+
 pdf(file = paste0(dir,"QC_boxplot_normalization.pdf"),
     width = 6,
     height = 4)
@@ -139,7 +140,7 @@ QC_boxplot(data_fill_normalization,data_group = data_group,
            title = "normalized data")
 dev.off()
 ## 3.2 Heatmap -----------------------------------------------------------------
-
+# 函数内有log2（）
 pdf(file = paste0(dir,"QC_heatmap_non-normalized.pdf"),
     width = 6,
     height = 6)
@@ -154,6 +155,7 @@ QC_heatmap(data = data_fill_normalization,data_group = data_group,
 dev.off()
 
 ## 3.3 PCA ---------------------------------------------------------------------
+# 函数内没有log2（）
 pdf(file = paste0(dir,"QC_pca_non-normalized.pdf"),
     width = 7,
     height = 7)

@@ -136,7 +136,7 @@ table(result_merge$result_merge$Sig)
 
 ## 4.4 Annotated volcano plot ----
 
-# 5. KEGG GO -------------------------------------------------------------------
+# 
 ## 5.1 Set output catagory----
 #OCI_AML2/MV4_11/MOLM13
 # 指定文件夹路径
