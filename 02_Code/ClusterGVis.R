@@ -2,8 +2,8 @@
 
 # 1. Packages ----
 # Note: please update your ComplexHeatmap to the latest version!
-library(devtools)
-devtools::install_github("junjunlab/ClusterGVis")
+library(pak)
+pak::pak("junjunlab/ClusterGVis")
 library(ClusterGVis)
 library(grid)
 library(ComplexHeatmap)
@@ -52,6 +52,7 @@ sample_group <- read.xlsx("./01_Data/IC50_group.xlsx")
 rownames(sample_group) <- sample_group$id
 table(sample_group$group)
 
+
 # check
 rownames(sample_group) == colnames(expr)
 
@@ -98,15 +99,86 @@ km <- clusterData(obj = exps,
                   cluster.method = "kmeans",
                   cluster.num = 6,
                   seed = 123)
+exp <- filter.std(exps,min.std ,visu = FALSE)
+exp <- exps
+cluster.num = 6
+cluster.method = "kmeans"
+# whether zsocre data
+if(TRUE){
+  hclust_matrix <- exp %>% t() %>% scale() %>% t()
+}else{
+  hclust_matrix <- exp
+}
+# add kmeans func n stats
+km <- stats::kmeans(x = hclust_matrix,centers = cluster.num,nstart = 10)
+
+od.res <- data.frame(od = match(names(km$cluster),rownames(hclust_matrix)),
+                     id = as.numeric(km$cluster),
+                     check.names = FALSE)
+
+
+cl.info <- data.frame(table(od.res$id),check.names = FALSE)
+
+# reorder matrix
+m <- hclust_matrix[od.res$od,]
+
+# add cluster and gene.name
+wide.r <- m %>%
+  data.frame(check.names = FALSE) %>%
+  dplyr::mutate(gene = rownames(.),
+                cluster = od.res$id) %>%
+  dplyr::arrange(cluster)
+
+# whether subset clusters
+if(!is.null(subcluster)){
+  wide.r <- wide.r %>% dplyr::filter(cluster %in% subcluster)
+}
+
+# wide to long
+df <- reshape2::melt(wide.r,
+                     id.vars = c('cluster','gene'),
+                     variable.name = 'cell_type',
+                     value.name = 'norm_value')
+
+# add cluster name
+df$cluster_name <- paste('cluster ',df$cluster,sep = '')
+
+# add gene number
+cltn <- table(wide.r$cluster)
+purrr::map_df(unique(df$cluster_name),function(x){
+  tmp <- df %>%
+    dplyr::filter(cluster_name == x)
+  
+  cn = as.numeric(unlist(strsplit(as.character(x),split = "cluster "))[2])
+  
+  tmp %>%
+    dplyr::mutate(cluster_name = paste(cluster_name," (",cltn[cn],")",sep = ''))
+}) -> df
+
+# cluster order
+df$cluster_name <- factor(df$cluster_name,levels = paste("cluster ",1:nrow(cl.info),
+                                                         " (",cl.info$Freq,")",sep = ''))
+# cluster list
+wide <- wide.r
+wide$cluster <- paste("C",wide$cluster,sep = "")
+cluster.list <- split(wide$gene,wide$cluster)
+
+# return
+km <- list(wide.res = wide.r,
+            long.res = df,
+            cluster.list = cluster.list,
+            type = cluster.method,
+            geneMode = "none",
+            geneType = "none")
 
 
 # 4. Plot ----
 ## 4.1 plot line only ----
-visCluster(object = cm,
+visCluster(object = km,
            plot.type = "line")
 
 # change color
-visCluster(object = cm,
+visCluster(object = km,
            plot.type = "line",
            ms.col = c("green","orange","red"))
 
