@@ -61,13 +61,19 @@ rownames(sample_group) == colnames(expr)
 expr_log2 <- log2(expr)
 colnames(expr_log2)
 
+# 单个细胞系分析（根据目的是否需要这一步）
+expr_molm13 <- expr_log2[,grep("MOLM13",colnames(expr_log2))]
+group_molm13 <- sample_group[grep("MOLM13",rownames(sample_group)),]
+
 # 修改表达矩阵的列名
-colnames(expr_log2) <- sample_group$group
-colnames(expr_log2)
+colnames(expr_molm13) <- group_molm13$value
+colnames(expr_molm13)
 #[1] "Medium" "Low"    "High"   "Low"    "High"   "Low"    "Medium" "High"   "High"   "High"  
 #[11] "Low"    "Low"    "Medium" "Medium" "Medium" "High"   "High"   "Low"    "Low"    "Medium"
 #[21] "Medium" "Medium" "Medium" "High"   "High"   "Low"    "Low"   
 
+## 2.2 caculate average ----
+# approach 1 
 library(limma)
 # limma::avereps：这是来自 limma 包的函数，avereps 用于对重复数据进行平均值计算。
 # avereps 会根据指定的 ID 进行分组，并对相同 ID 的数据取平均值
@@ -76,9 +82,21 @@ avereps_df[1:3,1:3]
 avereps_df <- avereps_df[,c("Ctrl","Low","High")]
 save(avereps_df,file = './03_Result/C_means_cluster/IC50 group/avereps_df.Rdata')
 
+# approach 2
+# 处理列名，去掉 `.1`, `.2` 这种后缀
+colnames(expr_molm13) <- sub("\\..*", "", colnames(expr_molm13))
+selected_mean <- apply(expr_molm13[, c(2, 7, 8)], 1, mean, na.rm = TRUE)
+selected_mean <- as.data.frame(selected_mean)
+expr_molm13[,"34"] <- selected_mean$selected_mean
+expr_molm13 <- expr_molm13[,-c(7,8)]
+
+# 按列名数值大小排序
+expr_molm13 <- expr_molm13[, order(as.numeric(colnames(expr_molm13)))]
+avereps_df <- expr_molm13
+
 # 3. Cluster ----
 ## 3.1 Set output path ----
-dir_cl <- "./03_Result/C_means_cluster/IC50 group/"
+dir_cl <- "./03_Result/C_means_cluster/IC50 group/MOLM13/"
 exps <- as.matrix(avereps_df) 
 
 # check optimal cluster numbers
@@ -200,7 +218,7 @@ dev.off()
 # 5. Enrich analysis ----
 library(org.Hs.eg.db)
 
-# enrich for clusters
+##  5.1 enrich for clusters ----
 enrich <- enrichCluster(object = cm,
                         OrgDb = org.Hs.eg.db,
                         type = "BP",
@@ -218,7 +236,7 @@ head(enrich,3)
 # cluster num
 cl_num <- 6   # ggsci::pal_d3()(cl_num) 
 
-# plot
+## 5.2 plot ----
 pdf(paste0(dir_cl,'Term_enrichplot.pdf'),height = 10,width = 11,onefile = F)
 visCluster(object = cm,
            plot.type = "both",
