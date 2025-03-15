@@ -17,27 +17,25 @@ source("./02_Code/run_enrichment_analysis.R")
 # 1. Data input ----------------------------------------------------------------
 ## 1.1 Group input ----
 # 导入分组信息
-data_group <- read_excel("./01_Data/MOLM13_group.xlsx")
+data_group <- read_excel("./01_Data/OCI_AML2_group.xlsx")
 table(data_group$group)
 data_group <- as.data.frame(data_group)
-data_group$group<- gsub("_WT","",data_group$group)
-data_group[grep("WT",data_group$id),2] <- "MOLM13_WT"
+
 #table(data_group$group)
 
 # 配色设置
 # 配色设置
-value_colour <- c("MOLM13_WT" = "#E64B35FF",
-                  "MOLM13_2W" = "#4DBBD5FA",
-                  "MOLM13_6W" = "#F2A200")
+value_colour <- c("High" = "#E64B35FF",
+                  "Low" = "#4DBBD5FA",
+                  "Con" = "#F2A200")
 rownames(data_group) <- data_group$id
 
 ## 1.2 DIA matrix input ----
-fill_norm <- read.csv("./01_Data/MOLM13_pg_matrix_fill_norm.csv")
+fill_norm <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv")
 colnames(fill_norm)
 rownames(fill_norm) <- fill_norm$X
 fill_norm <- fill_norm[,-1]
-#MV4_11_fill_norm <- fill_norm[,grep("MV4_11",colnames(fill_norm))]
-#write.csv(MV4_11_fill_norm,file = "./01_Data/MV4_11_pg_matrix_fill_norm.csv")
+OCI_fill_norm <- fill_norm[,grep("OCI",colnames(fill_norm))]
 
 # remove abnormal sample
 data_group <- data_group[-grep("4W",data_group$id),]
@@ -50,30 +48,30 @@ rownames(data_anno) <- data_anno$Protein.Group
 
 # 2. Set output category -------------------------------------------------------------
 #dir.create("./03_Result/GO&KEGG/MOLM13")
-dir <- "./03_Result/QC/MV4_11/"
-
+dir_QC <- "./03_Result/QC/OCI_AML2/"
+QC_data <- OCI_fill_norm
 # 3. QC ------------------------------------------------------------------------
 ## 3.1 Boxplot -----------------------------------------------------------------
-pdf(file = paste0(dir,"QC_boxplot_normalization.pdf"),
+pdf(file = paste0(dir_QC,"QC_boxplot_normalization.pdf"),
     width = 6,
     height = 4)
-QC_boxplot(fill_norm,data_group = data_group,
+QC_boxplot(QC_data,data_group = data_group,
            value_colour = value_colour,
            title = "normalized data")
 dev.off()
 ## 3.2 Heatmap -----------------------------------------------------------------
-pdf(file = paste0(dir,"QC_heatmap_normalization.pdf"),
+pdf(file = paste0(dir_QC,"QC_heatmap_normalization.pdf"),
     width = 6,
     height = 6)
-QC_heatmap(fill_norm,data_group = data_group,
+QC_heatmap(QC_data,data_group = data_group,
            value_colour = value_colour)
 dev.off()
 
 ## 3.3 PCA ---------------------------------------------------------------------
-pdf(file = paste0(dir,"QC_pca_normalization.pdf"),
+pdf(file = paste0(dir_QC,"QC_pca_normalization.pdf"),
     width = 7,
     height = 7)
-QC_PCA(data = fill_norm,
+QC_PCA(data = log2(QC_data+1),
        data_group = data_group,
        value_colour = value_colour)
 dev.off()
@@ -97,14 +95,14 @@ data_anno <- data_anno[rownames(data_anno)%in%rownames(data_fill_norm),]
 data_fill_norm <- data_fill_norm[,order(colnames(data_fill_norm))]
 
 ## 4.1 Set output catagory ----
-dir_DE <- "./03_Result/DE/"
+dir_DE <- "./03_Result/DE/OCI_AML2/"
 
 ## 4.2 Set group ----
-data_group <- read.xlsx("./01_Data/All_group_info.xlsx")
+data_group <- read.xlsx("./01_Data/IC50_group.xlsx")
 rownames(data_group) <- data_group$id
 data_group <- data_group[order(rownames(data_group)),]
 table(data_group$group)
-targeted_group <- data_group
+targeted_group <- data_group[grep('OCI',data_group$id),]
 
 # 2W/6W-WT 组别
 if(T){
@@ -117,8 +115,8 @@ if(T){
 
 
 # 根据分组选择要进行差异分析的组别
-group_1 <- "OCI_6W"       # group 1为实验组
-group_2 <- "OCI_WT"       # group 2为对照组
+group_1 <- "High"       # group 1为实验组
+group_2 <- "Ctrl"       # group 2为对照组
 
 ## 4.3 Res output ----
 result_merge <- run_DE(data = data_fill_norm,
@@ -127,7 +125,7 @@ result_merge <- run_DE(data = data_fill_norm,
                        log2 = TRUE,
                        group_1 = group_1,
                        group_2 = group_2,
-                       logfc_threshold = 0.5,           # 对应fc约为1.414
+                       logfc_threshold = 0.25,           # 对应fc约为1.25
                        pvalue_threshold = 0.05,
                        qvalue_threshold = NULL,
                        dir = "./03_Result/DE/OCI_AML2/")

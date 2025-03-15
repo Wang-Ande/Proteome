@@ -17,7 +17,7 @@ library(tidyverse)
 library(ggplot2)
 library(ggstatsplot)
 library(openxlsx)
-
+source("./02_Code/extract_expr_by_cell.R")
 # 2. Data input ----
 # load data(standardised)
 expr <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv",row.names = 1)
@@ -52,7 +52,6 @@ sample_group <- read.xlsx("./01_Data/IC50_group.xlsx")
 rownames(sample_group) <- sample_group$id
 table(sample_group$group)
 
-
 # check
 rownames(sample_group) == colnames(expr)
 
@@ -62,27 +61,19 @@ expr_log2 <- log2(expr)
 colnames(expr_log2)
 
 # 单个细胞系分析（根据目的是否需要这一步）
-expr_molm13 <- expr_log2[,grep("MOLM13",colnames(expr_log2))]
-group_molm13 <- sample_group[grep("MOLM13",rownames(sample_group)),]
-
-# 修改表达矩阵的列名
-colnames(expr_molm13) <- group_molm13$value
-colnames(expr_molm13)
-#[1] "Medium" "Low"    "High"   "Low"    "High"   "Low"    "Medium" "High"   "High"   "High"  
-#[11] "Low"    "Low"    "Medium" "Medium" "Medium" "High"   "High"   "Low"    "Low"    "Medium"
-#[21] "Medium" "Medium" "Medium" "High"   "High"   "Low"    "Low"   
+process_cell_line("OCI")  # 生成 expr_cellline
 
 ## 2.2 caculate average ----
-# approach 1 
+### 2.2.1 approach 1 -----------------------------------------------------------
 library(limma)
 # limma::avereps：这是来自 limma 包的函数，avereps 用于对重复数据进行平均值计算。
 # avereps 会根据指定的 ID 进行分组，并对相同 ID 的数据取平均值
-avereps_df <- t(limma::avereps(t(expr_log2) , ID = colnames(expr_log2))) #对相同时间序列的表达值取平均
+avereps_df <- t(limma::avereps(t(expr_OCI) , ID = colnames(expr_OCI))) #对相同时间序列的表达值取平均
 avereps_df[1:3,1:3]
 avereps_df <- avereps_df[,c("Ctrl","Low","High")]
-save(avereps_df,file = './03_Result/C_means_cluster/IC50 group/avereps_df.Rdata')
+save(avereps_df,file = './03_Result/C_means_cluster/IC50 group/OCI-M2/avereps_df.Rdata')
 
-# approach 2
+### 2.2.2 approach 2 -----------------------------------------------------------
 # 处理列名，去掉 `.1`, `.2` 这种后缀
 colnames(expr_molm13) <- sub("\\..*", "", colnames(expr_molm13))
 selected_mean <- apply(expr_molm13[, c(2, 7, 8)], 1, mean, na.rm = TRUE)
@@ -96,11 +87,13 @@ avereps_df <- expr_molm13
 
 # 3. Cluster ----
 ## 3.1 Set output path ----
-dir_cl <- "./03_Result/C_means_cluster/IC50 group/MOLM13/"
+dir_cl <- "./03_Result/C_means_cluster/IC50 group/OCI-M2/"
 exps <- as.matrix(avereps_df) 
 
 # check optimal cluster numbers
+pdf(paste0(dir_cl,"Elbow_plot.pdf"),width = 6,height = 5)
 getClusters(obj = exps)
+dev.off()
 # choose 6
 
 ## 3.2 mfuzz for clustering ----
@@ -192,7 +185,7 @@ km <- list(wide.res = wide.r,
 
 # 4. Plot ----
 ## 4.1 plot line only ----
-visCluster(object = km,
+visCluster(object = cm,
            plot.type = "line")
 
 # change color
