@@ -23,7 +23,7 @@ source("./02_Code/extract_expr_by_cell.R")
 expr <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv",row.names = 1)
 
 # anno input
-# 注意，data和data_anno的行名应一致
+# Attention! The rownames of data and data_anno should be consistent
 data_anno <- read.xlsx("./01_Data/data_anno.xlsx")
 data_anno <- as.data.frame(data_anno)
 colnames(data_anno)
@@ -37,7 +37,7 @@ expr$gene <- gene
 rownames(expr) <- expr$gene    # gene做为行名重复，进行去重处理
 
 # 1. 处理 NA 值
-expr <- expr[!is.na(expr$gene), ]  # 删除 NA 行
+expr <- expr[!is.na(expr$gene), ]  # remove NA rows
 
 # 2. 处理重复基因
 expr <- aggregate(. ~ gene, data = expr, FUN = max)
@@ -223,6 +223,7 @@ enrich <- enrichCluster(object = cm,
                         topn = 5,
                         seed = 5201314)
 save(enrich,file = (paste0(dir_cl,"enrich.Rdata")))
+
 # check
 head(enrich,3)
 
@@ -230,7 +231,8 @@ head(enrich,3)
 cl_num <- 6   # ggsci::pal_d3()(cl_num) 
 
 ## 5.2 plot ----
-cairo_pdf(paste0(dir_cl,'Cluster_enrichplot.pdf'),height = 10,width = 11,onefile = F)
+cairo_pdf(paste0(dir_cl,'Cluster_enrichplot.pdf'),
+          height = 10,width = 11,onefile = F)
 visCluster(object = cm,
            plot.type = "both",
            column_names_rot = 45,
@@ -247,10 +249,10 @@ dev.off()
 # The above fun() only shows the top 5 pathways, so we need the next fun() to display all pathways.
 # Gene prepare
 source("./02_Code/Extract_genes.R")
-load("./03_Result/C_means_cluster/IC50 group/MOLM13/C-Means_res.Rdata")
+load("./03_Result/C_means_cluster/IC50 group/OCI-M2/C-Means_res/C-Means_res.Rdata")
 
 # subset target cluster gene
-targeted_genes <- extract_genes(cm, cl = 6, membership_threshold = 0)
+targeted_genes <- extract_genes(cm, cl = 4, membership_threshold = 0)
 
 # set database
 GO_database <- 'org.Hs.eg.db'  # GO is org.Hs.eg.db database
@@ -262,12 +264,12 @@ gene <- clusterProfiler::bitr(targeted_genes, fromType = 'SYMBOL',
 
 # GO 
 # GO富集分析
-go <- clusterProfiler::enrichGO(gene = gene$ENTREZID, # 导入基因的ENTREZID编号
+go <- clusterProfiler::enrichGO(gene = gene$ENTREZID, 
                                  OrgDb = GO_database, 
-                                 keyType = "ENTREZID", # 设定读取的gene ID类型
-                                 ont = "ALL",          # (BP,CC,MF三部分）
+                                 keyType = "ENTREZID", 
+                                 ont = "ALL",          # (ALL,BP,CC,MF）
                                  pvalueCutoff = 0.05,
-                                 qvalueCutoff = 1)   # 设定q值阈值
+                                 qvalueCutoff = 1)   
 
 # KEGG 
 # KEGG富集分析
@@ -284,24 +286,24 @@ GO_res <- result$enrichGO
 KEGG_res <- result$enrichKEGG
 
 # Res output
-dir_enrich <- "./03_Result/C_means_cluster/IC50 group/MOLM13/"
-
+dir_enrich <- "./03_Result/C_means_cluster/IC50 group/OCI-M2/Cluster_4/"
+if(T){
 # output enrichGO 
-write.xlsx(GO_res@result, file = paste0(dir_enrich, "/GO_dw_membership_0.xlsx"))
-pdf(file = paste0(dir_enrich, "/GO_dw_membership_0.pdf"), width = 6, height = 8)
+write.xlsx(GO_res@result, file = paste0(dir_enrich, "/GO_membership_0.xlsx"))
+pdf(file = paste0(dir_enrich, "/GO_membership_0.pdf"), width = 6, height = 8)
 p1 <- dotplot(GO_res, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free') +
   theme(axis.text.y = element_text(angle = 0, hjust = 1)) +
-  scale_y_discrete(labels = function(x) str_wrap(x, width = 30))  # 控制每行最多显示40个字符
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 30))  # Show a maximum of 40 characters 
 print(p1)
 dev.off()
 
 # output enrichKEGG
-write.xlsx(KEGG_res@result, file = paste0(dir_enrich, "/KEGG_dw_membership_0.xlsx"))
-pdf(file = paste0(dir_enrich, "/KEGG_dw_membership_0.pdf"), width = 6, height = 5)
+write.xlsx(KEGG_res@result, file = paste0(dir_enrich, "/KEGG_membership_0.xlsx"))
+pdf(file = paste0(dir_enrich, "/KEGG_membership_0.pdf"), width = 6, height = 5)
 p2 <- dotplot(KEGG_res,showCategory = 10)
 print(p2)
 dev.off()
-
+}
 
 # dotplot
 # ggplot2画气泡图，scale_color_gradient设置蓝红配色
