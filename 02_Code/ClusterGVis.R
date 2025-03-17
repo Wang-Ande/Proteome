@@ -87,7 +87,7 @@ avereps_df <- expr_molm13
 
 # 3. Cluster ----
 ## 3.1 Set output path ----
-dir_cl <- "./03_Result/C_means_cluster/IC50 group/OCI-M2/"
+dir_cl <- "./03_Result/C_means_cluster/IC50 group/MOLM13/"
 exps <- as.matrix(avereps_df) 
 
 # check optimal cluster numbers
@@ -230,7 +230,7 @@ head(enrich,3)
 cl_num <- 6   # ggsci::pal_d3()(cl_num) 
 
 ## 5.2 plot ----
-pdf(paste0(dir_cl,'Term_enrichplot.pdf'),height = 10,width = 11,onefile = F)
+cairo_pdf(paste0(dir_cl,'Cluster_enrichplot.pdf'),height = 10,width = 11,onefile = F)
 visCluster(object = cm,
            plot.type = "both",
            column_names_rot = 45,
@@ -242,3 +242,92 @@ visCluster(object = cm,
            go.col = rep(ggsci::pal_d3()(cl_num),each = 5), 
            go.size = "pval")
 dev.off()
+
+## 5.3 all Enrichpathway ----
+# The above fun() only shows the top 5 pathways, so we need the next fun() to display all pathways.
+# Gene prepare
+source("./02_Code/Extract_genes.R")
+load("./03_Result/C_means_cluster/IC50 group/MOLM13/C-Means_res.Rdata")
+
+# subset target cluster gene
+targeted_genes <- extract_genes(cm, cl = 6, membership_threshold = 0)
+
+# set database
+GO_database <- 'org.Hs.eg.db'  # GO is org.Hs.eg.db database
+KEGG_database <- 'hsa'         # KEGG is hsa database
+
+# gene ID转换 
+gene <- clusterProfiler::bitr(targeted_genes, fromType = 'SYMBOL', 
+                              toType = 'ENTREZID', OrgDb = GO_database)
+
+# GO 
+# GO富集分析
+go <- clusterProfiler::enrichGO(gene = gene$ENTREZID, # 导入基因的ENTREZID编号
+                                 OrgDb = GO_database, 
+                                 keyType = "ENTREZID", # 设定读取的gene ID类型
+                                 ont = "ALL",          # (BP,CC,MF三部分）
+                                 pvalueCutoff = 0.05,
+                                 qvalueCutoff = 1)   # 设定q值阈值
+
+# KEGG 
+# KEGG富集分析
+kegg <- clusterProfiler::enrichKEGG(gene = gene$ENTREZID,
+                                  keyType = "kegg",
+                                  organism = KEGG_database,
+                                  pAdjustMethod = "BH",
+                                  pvalueCutoff = 0.05,
+                                  qvalueCutoff = 1)
+
+#GO、KEGG结果整合 
+result <- list(enrichGO = go, enrichKEGG = kegg)
+GO_res <- result$enrichGO
+KEGG_res <- result$enrichKEGG
+
+# Res output
+dir_enrich <- "./03_Result/C_means_cluster/IC50 group/MOLM13/"
+
+# output enrichGO 
+write.xlsx(GO_res@result, file = paste0(dir_enrich, "/GO_dw_membership_0.xlsx"))
+pdf(file = paste0(dir_enrich, "/GO_dw_membership_0.pdf"), width = 6, height = 8)
+p1 <- dotplot(GO_res, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free') +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1)) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 30))  # 控制每行最多显示40个字符
+print(p1)
+dev.off()
+
+# output enrichKEGG
+write.xlsx(KEGG_res@result, file = paste0(dir_enrich, "/KEGG_dw_membership_0.xlsx"))
+pdf(file = paste0(dir_enrich, "/KEGG_dw_membership_0.pdf"), width = 6, height = 5)
+p2 <- dotplot(KEGG_res,showCategory = 10)
+print(p2)
+dev.off()
+
+
+# dotplot
+# ggplot2画气泡图，scale_color_gradient设置蓝红配色
+library(ggplot2)
+library(stringr)
+
+# Enrich_res input 
+Enrich_res <- read.xlsx("./03_Result/C_means_cluster/")
+Enrich_res <- Enrich_res[Enrich_res$pvalue<0.05,]
+# 按 p 值升序排序后，取前 20 行（最显著的 20 个结果）
+Enrich_res <- head(Enrich_res, 20)                    # 取前 20 行
+Enrich_res <- Enrich_res[order(-Enrich_res$pvalue), ]  # 按 p 值排序
+
+Enrich_res$Description <- factor(Enrich_res$Description, 
+                                 levels = unique(Enrich_res$Description))
+#Enrich_res <- Enrich_res[order(Enrich_res$Count),]
+
+pdf(file =paste0(dir_enrich,"KEGG_dw_ms_0_selected.pdf") ,
+    width = 5, height = 6 )
+p2 <- ggplot(Enrich_res,aes(x=Count,y=Description))+
+  geom_point(aes(size=Count,color= -log10(pvalue)))+
+  theme_bw()+labs(y="",x="Count")+ 
+  scale_color_gradient(low = "lightblue", high = "darkblue")+
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 40)) +  # 动态换行
+  theme(axis.text.y = element_text(angle = 0, hjust = 1))  
+print(p2)      
+dev.off()
+#scale_size_continuous(range = c(3, 12))+  # 调整气泡的大小范围
+#调整Y轴标签角度
