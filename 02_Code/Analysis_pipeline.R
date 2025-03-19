@@ -17,7 +17,7 @@ source("./02_Code/run_enrichment_analysis.R")
 # 1. Data input ----------------------------------------------------------------
 ## 1.1 Group input ----
 # 导入分组信息
-data_group <- read_excel("./01_Data/OCI_AML2_group.xlsx")
+data_group <- read_excel("./01_Data/")
 table(data_group$group)
 data_group <- as.data.frame(data_group)
 
@@ -78,24 +78,17 @@ dev.off()
 
 # 4. DE ------------------------------------------------------------------------
 # expr input
-data_fill_norm <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv")
-# 整理数据
-colnames(data_fill_norm)
-rownames(data_fill_norm) <- data_fill_norm$X
-data_fill_norm <- data_fill_norm[,-1]
+data_fill_norm <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv", row.names = 1)
 
 # anno input
 # 注意，data和data_anno的行名应一致
-data_anno <- read_xlsx("./01_Data/data_anno.xlsx")
-data_anno <- as.data.frame(data_anno)
-colnames(data_anno)
-rownames(data_anno) <- data_anno$Protein.Group
+data_anno <- read.xlsx("./01_Data/data_anno.xlsx",rowNames = TRUE)
 data_anno <- data_anno[rownames(data_anno)%in%rownames(data_fill_norm),]
 
 data_fill_norm <- data_fill_norm[,order(colnames(data_fill_norm))]
 
 ## 4.1 Set output catagory ----
-dir_DE <- "./03_Result/DE/OCI_AML2/"
+dir_DE <- "./03_Result/DE/MOLM13/Low_vs_Ctrl/"
 
 ## 4.2 Set group ----
 data_group <- read.xlsx("./01_Data/IC50_group.xlsx")
@@ -103,16 +96,6 @@ rownames(data_group) <- data_group$id
 data_group <- data_group[order(rownames(data_group)),]
 table(data_group$group)
 targeted_group <- data_group[grep('OCI',data_group$id),]
-
-# 2W/6W-WT 组别
-if(T){
-  targeted_group[grep("2W",targeted_group$id),2] <- gsub("_VEN","_2W",
-                                                         targeted_group[grep("2W",targeted_group$id),2])
-  targeted_group[grep("6W",targeted_group$id),2] <- gsub("_VEN","_6W",
-                                                         targeted_group[grep("6W",targeted_group$id),2])
-  table(targeted_group$group)
-}
-
 
 # 根据分组选择要进行差异分析的组别
 group_1 <- "High"       # group 1为实验组
