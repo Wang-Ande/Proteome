@@ -174,37 +174,37 @@ dev.off()
 
 ## 3.4 Cor ---------------------------------------------------------------------
 #计算样本之间的相关性
-dir_cor <- "./03_Result/QC/MV4_11/"
+dir_cor <- "./03_Result/QC/ALL/"
 prote_expr <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv",row.names = 1)
+sorted_colnames <- sort(colnames(prote_expr))       # 对列名进行排序
+prote_expr <- prote_expr[, sorted_colnames]         # 按照排序后的列名重新排列
 
 # control 
 prote_WT <- prote_expr[,grep("WT",colnames(prote_expr))]
-sorted_colnames <- sort(colnames(prote_WT))         # 对列名进行排序
-prote_WT <- prote_WT[, sorted_colnames]             # 按照排序后的列名重新排列
 
 # treatment
 prote_trt <- prote_expr[,grep("2w",colnames(prote_expr))]
-sorted_colnames <- sort(colnames(prote_trt))        # 对列名进行排序
-prote_trt <- prote_trt[, sorted_colnames]           # 按照排序后的列名重新排列
 
 # Cell line
 prote_cell <- prote_expr[,grep("MV4_11",colnames(prote_expr))]
-sorted_colnames <- sort(colnames(prote_cell))       # 对列名进行排序
-prote_cell <- prote_cell[, sorted_colnames]         # 按照排序后的列名重新排列
 
 # log2(expr+1)
-prote_log2 <-log2(prote_cell)  
+prote_log2 <-log2(prote_expr)  
 
 # cor analysis
-corr <- cor(prote_log2, method = 'pearson')         # cor函数计算两两样本（列与列）之间的相关系数
-View(corr)	                            
+corr_matrix <- cor(prote_log2, method = 'pearson')         # cor函数计算两两样本（列与列）之间的相关系数
+View(corr_matrix)	                            
 
+# two visualization methods
+# methods 1
 if(T){
   cairo_pdf(paste0(dir_cor,'MV4_11_sample_cor.pdf'), width = 11, height = 11)	
-  corrplot(corr, type = 'upper',   # type='upper'：只显示右上角
-           method = "circle",      # ("circle", "square", "ellipse", "number", "shade", "color")
-           col = colorRampPalette(c("#D1E5F0", "#2166AC"))(100),
-           col.lim = c(min(corr), max(corr)),
+  breaks <- seq(0.9, 1, length.out = 100)  # 强制颜色范围放大 0.9~1
+  color_palette <- colorRampPalette(c("white", "#2166AC"))(99)
+  corrplot(corr_matrix, type = 'upper',   # type='upper'：只显示右上角
+           method = "color",      # ("circle", "square", "ellipse", "number", "shade", "color")
+           col = color_palette,
+           col.lim = c(0.9, 1),
            tl.col = 'black',       # tl.col='black'：字体颜色黑色
            order = 'hclust',       # order='hclust'：使用层次聚类算法
            tl.srt = 45,            # tl.srt = 45：x轴标签倾斜45度
@@ -213,6 +213,30 @@ if(T){
   dev.off() 
 }
 
+# methods 2
+# 转换相关性矩阵为长格式
+library(reshape2)
+library(ggplot2)
+corr_long <- melt(corr_matrix)
 
+# 使用层次聚类重新排序列名
+hc <- hclust(dist(corr_matrix))
+ordered_names <- rownames(corr_matrix)[hc$order]
 
+# 重新调整数据框的因子顺序
+corr_long$Var1 <- factor(corr_long$Var1, levels = ordered_names)
+corr_long$Var2 <- factor(corr_long$Var2, levels = ordered_names)
 
+# plot
+ggplot(corr_long, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradientn(colors = c("#D1E5F0", "#2166AC"), 
+                       limits = c(min(corr_matrix), 1),                  # 设定颜色映射范围
+                       name = expression(R^2)) +            # 更改图例标题为 R²
+  labs(title = "Pearson correlation between samples") +     # 添加标题
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),  # 旋转 x 轴标签
+        axis.title = element_blank(),                       # 隐藏 X 和 Y 轴标题
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),  # 标题居中、加粗
+        legend.position = "right")                          # 保持图例在右侧
+ggsave("./03_Result/QC/ALL/All_sample_cor.pdf", width = 8, height = 7)
