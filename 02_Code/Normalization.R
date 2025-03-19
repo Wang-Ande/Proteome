@@ -4,6 +4,7 @@ library(ggplot2)
 library(readr)
 library(dplyr)
 library(openxlsx)
+library(corrplot)
 source("./02_Code/QC_PCA.R")
 source("./02_Code/QC_boxplot.R")
 source("./02_Code/QC_heatmap.R")
@@ -173,35 +174,37 @@ dev.off()
 
 ## 3.4 Cor ---------------------------------------------------------------------
 #计算样本之间的相关性
-dir_cor <- "./03_Result/QC/ALL/"
+dir_cor <- "./03_Result/QC/MV4_11/"
 prote_expr <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv",row.names = 1)
 
 # control 
 prote_WT <- prote_expr[,grep("WT",colnames(prote_expr))]
-sorted_colnames <- sort(colnames(prote_WT))             # 对列名进行排序
-prote_WT <- prote_WT[, sorted_colnames]                 # 按照排序后的列名重新排列
+sorted_colnames <- sort(colnames(prote_WT))         # 对列名进行排序
+prote_WT <- prote_WT[, sorted_colnames]             # 按照排序后的列名重新排列
 
-# experimental
-prote_2W <- prote_expr[,grep("2w",colnames(prote_expr))]
-sorted_colnames <- sort(colnames(gene_2W))             # 对列名进行排序
-gene_2W <- gene_2W[, sorted_colnames]                  # 按照排序后的列名重新排列
+# treatment
+prote_trt <- prote_expr[,grep("2w",colnames(prote_expr))]
+sorted_colnames <- sort(colnames(prote_trt))        # 对列名进行排序
+prote_trt <- prote_trt[, sorted_colnames]           # 按照排序后的列名重新排列
 
 # Cell line
-gene_OCI_AML2 <- prote_expr[,grep("OCI_AML2",colnames(prote_expr))]
-sorted_colnames <- sort(colnames(gene_OCI_AML2))       # 对列名进行排序
-gene_OCI_AML2 <- gene_OCI_AML2[, sorted_colnames]      # 按照排序后的列名重新排列
+prote_cell <- prote_expr[,grep("MV4_11",colnames(prote_expr))]
+sorted_colnames <- sort(colnames(prote_cell))       # 对列名进行排序
+prote_cell <- prote_cell[, sorted_colnames]         # 按照排序后的列名重新排列
 
 # log2(expr+1)
-prote_log2 <-log2(prote_expr)  
+prote_log2 <-log2(prote_cell)  
 
 # cor analysis
-corr <- cor(prote_log2, method = 'pearson')      # cor函数计算两两样本（列与列）之间的相关系数
+corr <- cor(prote_log2, method = 'pearson')         # cor函数计算两两样本（列与列）之间的相关系数
 View(corr)	                            
 
 if(T){
-  pdf(paste0(dir_cor,'All_sample_cor.pdf'), width = 11, height = 11)	
+  cairo_pdf(paste0(dir_cor,'MV4_11_sample_cor.pdf'), width = 11, height = 11)	
   corrplot(corr, type = 'upper',   # type='upper'：只显示右上角
            method = "circle",      # ("circle", "square", "ellipse", "number", "shade", "color")
+           col = colorRampPalette(c("#D1E5F0", "#2166AC"))(100),
+           col.lim = c(min(corr), max(corr)),
            tl.col = 'black',       # tl.col='black'：字体颜色黑色
            order = 'hclust',       # order='hclust'：使用层次聚类算法
            tl.srt = 45,            # tl.srt = 45：x轴标签倾斜45度
