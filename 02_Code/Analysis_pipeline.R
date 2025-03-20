@@ -117,21 +117,18 @@ table(result_merge$result_merge$Sig)
 
 ## 4.4 Annotated volcano plot ----
 
-# 
+# 5. GO&KEGG ----
 ## 5.1 Set output catagory----
-#OCI_AML2/MV4_11/MOLM13
-# 指定文件夹路径
-dir.create("./03_Result/GO&KEGG/MOLM13/VEN_vs_WT/")
-dir_enrich <- "./03_Result/GO&KEGG/OCI_AML2/VEN_vs_WT/"
+dir_enrich <- "./03_Result/GO&KEGG/MOLM13/"
 
 ## 5.2 DE_res input ----
-DE_result <- read.csv('./03_Result/DE/OCI_AML2/OCI_VEN_vs_OCI_WT/result_DE.csv')
+DP_result <- read.csv('./03_Result/Diff_Prote/MOLM13/Low_vs_Ctrl/result_DE.csv')
 
 ## 5.3 set P.Value ----
-GeneSymbol <- subset(DE_result, P.Value < 0.05)
+GeneSymbol <- subset(DP_result, P.Value < 0.05)
 
 ## 5.4 set cutoff值 ----
-cutoff <- 0.5                  # 1.4倍变化
+cutoff <- 0.25                  # 对应fc约为1.25
 
 # 转换基因名 
 y <- GeneSymbol$Genes
@@ -147,50 +144,50 @@ GO_database <- 'org.Hs.eg.db'  # GO是org.Hs.eg.db数据库
 KEGG_database <- 'hsa'         # KEGG是hsa数据库
 
 # gene ID转换 
-gene <- bitr(down_genes$gene, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = GO_database)
+gene <- clusterProfiler::bitr(down_genes$gene, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = GO_database)
 
 ### 5.5.1 GO ----
 # GO富集分析
-kkd <- enrichGO(gene = gene$ENTREZID, # 导入基因的ENTREZID编号
-                OrgDb = GO_database, # 用到的数据库（人类是：org.Hs.eg.db）
-                keyType = "ENTREZID", # 设定读取的gene ID类型
-                ont = "ALL", # (ont为ALL因此包括 Biological Process,Cellular Component,Mollecular Function三部分）
-                pvalueCutoff = 0.05,
-                qvalueCutoff = 0.2)# 设定q值阈值
+go <- clusterProfiler::enrichGO(gene = gene$ENTREZID, 
+                                 OrgDb = GO_database, 
+                                 keyType = "ENTREZID", 
+                                 ont = "ALL",           #(ALL,BP,CC,MF）
+                                 pvalueCutoff = 0.05,
+                                 qvalueCutoff = 0.2)    
 
 ### 5.5.2 KEGG ----
 # KEGG富集分析
-kk <- enrichKEGG(gene = gene$ENTREZID,
-                 keyType = "kegg",
-                 organism = KEGG_database,
-                 pAdjustMethod = "BH",
-                 pvalueCutoff = 0.05,
-                 qvalueCutoff = 0.2)
+kegg <- clusterProfiler::enrichKEGG(gene = gene$ENTREZID,
+                                  keyType = "kegg",
+                                  organism = KEGG_database,
+                                  pAdjustMethod = "BH",
+                                  pvalueCutoff = 0.05,
+                                  qvalueCutoff = 0.2)
 
 ## GO、KEGG结果整合 
-result <- list(enrichGO = kkd, enrichKEGG = kk)
+result <- list(enrichGO = go, enrichKEGG = kegg)
 
 # 结果标记为下调 
 result_down <- result
-kkd_down <- result_down$enrichGO
-kk_down <- result_down$enrichKEGG
+GO_down <- result_down$enrichGO
+KEGG_down <- result_down$enrichKEGG
 
 ### 5.5.3 down res_output ----
 # 导出下调enrichGO 
-write.csv(kkd_down@result, file = paste0(dir_enrich, "/GO_down.csv"), quote = F, row.names = F)
+write.csv(GO_down@result, file = paste0(dir_enrich, "/GO_down.csv"), quote = F, row.names = F)
 
 # dotplot
 pdf(file = paste0(dir_enrich, "/GO_down.pdf"), width = 6, height = 7)
-p1 <- dotplot(kkd_down, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free') 
+p1 <- dotplot(GO_down, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free') 
 print(p1)
 dev.off()
 
 # 导出下调enrichKEGG
-write.csv(kk_down@result, file = paste0(dir_enrich, "/KEGG_down.csv"), quote = F, row.names = F)
+write.csv(KEGG_down@result, file = paste0(dir_enrich, "/KEGG_down.csv"), quote = F, row.names = F)
 
 # dotplot
 pdf(file = paste0(dir_enrich, "/KEGG_down.pdf"), width = 6, height = 5)
-p2 <- dotplot(kk_down,showCategory = 10)
+p2 <- dotplot(KEGG_down,showCategory = 10)
 print(p2)
 dev.off()
 }
@@ -201,56 +198,55 @@ up_genes <- subset(GeneSymbol, logFC > cutoff)
 
 ### 5.6.1 GO-up ----
 # gene ID转换 
-gene <- bitr(up_genes$gene, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = GO_database)
+gene <- clusterProfiler::bitr(up_genes$gene, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = GO_database)
 
 # GO富集分析
-kkd <- enrichGO(gene = gene$ENTREZID, # 导入基因的ENTREZID编号
-                OrgDb = GO_database, # 用到的数据库（人类是：org.Hs.eg.db）
-                keyType = "ENTREZID", # 设定读取的gene ID类型
-                ont = "ALL", # (ont为ALL因此包括 Biological Process,Cellular Component,Mollecular Function三部分
-                pvalueCutoff = 0.05,
-                qvalueCutoff = 0.2, # 设定q值阈值
-                readable = T)
+go <- clusterProfiler::enrichGO(gene = gene$ENTREZID, 
+                                OrgDb = GO_database, 
+                                keyType = "ENTREZID", 
+                                ont = "ALL", 
+                                pvalueCutoff = 0.05,
+                                qvalueCutoff = 0.2, 
+                                readable = T)
 ### 5.6.2 KEGG-up ----
-
 # KEGG富集分析
-kk <- enrichKEGG(gene = gene$ENTREZID,
-                 keyType = "kegg",
-                 organism = KEGG_database,
-                 pAdjustMethod = "BH",
-                 pvalueCutoff = 0.05,
-                 qvalueCutoff = 0.2)
+kegg <- clusterProfiler::enrichKEGG(gene = gene$ENTREZID,
+                                    keyType = "kegg",
+                                    organism = KEGG_database,
+                                    pAdjustMethod = "BH",
+                                    pvalueCutoff = 0.05,
+                                    qvalueCutoff = 0.2)
 
 # GO、KEGG结果整合
-result <- list(enrichGO = kkd, enrichKEGG = kk)
+result <- list(enrichGO = go, enrichKEGG = kegg)
 
 # 结果标记为上调
 result_up <- result
-kkd_up <- result_up$enrichGO
-kk_up <- result_up$enrichKEGG
+GO_up <- result_up$enrichGO
+KEGG_up <- result_up$enrichKEGG
 
 ### 5.6.3 up res_output ----
 
 # 导出上调enrichGO
-write.csv(kkd_up@result, file = paste0(dir_enrich, "/GO_up.csv"), quote = F, row.names = F)
+write.csv(GO_up@result, file = paste0(dir_enrich, "/GO_up.csv"), quote = F, row.names = F)
 
 # dotplot
 pdf(file = paste0(dir_enrich, "/GO_up.pdf"), width = 6, height = 7)
-p3 <- dotplot(kkd_up, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free')
+p3 <- dotplot(GO_up, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free')
 print(p3)
 dev.off()
 
 # 导出上调enrichKEGG
-write.csv(kk_up@result, file = paste0(dir_enrich, "/KEGG_up.csv"), quote = F, row.names = F)
+write.csv(KEGG_up@result, file = paste0(dir_enrich, "/KEGG_up.csv"), quote = F, row.names = F)
 
 # dotplot
 pdf(file = paste0(dir_enrich, "/KEGG_up.pdf"), width = 6, height = 5)
-p4 <- dotplot(kk_up,showCategory = 10)
+p4 <- dotplot(KEGG_up,showCategory = 10)
 print(p4)
 dev.off()
 }
 
-## 5.7 统计上下调的通路的数量 ----
+## 5.7 The number of up and down pathways ----
 # 下调GO 
 table(kkd_down@result$p.adjust<0.05)
 # 下调KEGG 
