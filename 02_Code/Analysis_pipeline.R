@@ -153,7 +153,7 @@ go <- clusterProfiler::enrichGO(gene = gene$ENTREZID,
                                  keyType = "ENTREZID", 
                                  ont = "ALL",           #(ALL,BP,CC,MF）
                                  pvalueCutoff = 0.05,
-                                 qvalueCutoff = 0.2)    
+                                 qvalueCutoff = 1)    
 
 ### 5.5.2 KEGG ----
 # KEGG富集分析
@@ -162,7 +162,7 @@ kegg <- clusterProfiler::enrichKEGG(gene = gene$ENTREZID,
                                   organism = KEGG_database,
                                   pAdjustMethod = "BH",
                                   pvalueCutoff = 0.05,
-                                  qvalueCutoff = 0.2)
+                                  qvalueCutoff = 1)
 
 ## GO、KEGG结果整合 
 result <- list(enrichGO = go, enrichKEGG = kegg)
@@ -206,7 +206,7 @@ go <- clusterProfiler::enrichGO(gene = gene$ENTREZID,
                                 keyType = "ENTREZID", 
                                 ont = "ALL", 
                                 pvalueCutoff = 0.05,
-                                qvalueCutoff = 0.2, 
+                                qvalueCutoff = 1, 
                                 readable = T)
 ### 5.6.2 KEGG-up ----
 # KEGG富集分析
@@ -215,7 +215,7 @@ kegg <- clusterProfiler::enrichKEGG(gene = gene$ENTREZID,
                                     organism = KEGG_database,
                                     pAdjustMethod = "BH",
                                     pvalueCutoff = 0.05,
-                                    qvalueCutoff = 0.2)
+                                    qvalueCutoff = 1)
 
 # GO、KEGG结果整合
 result <- list(enrichGO = go, enrichKEGG = kegg)
