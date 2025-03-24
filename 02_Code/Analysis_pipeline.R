@@ -17,7 +17,7 @@ source("./02_Code/run_enrichment_analysis.R")
 # 1. Data input ----------------------------------------------------------------
 ## 1.1 Group input ----
 # 导入分组信息
-data_group <- read_excel("./01_Data/")
+data_group <- read.excel("./01_Data/IC50_group.xlsx")
 table(data_group$group)
 data_group <- as.data.frame(data_group)
 
@@ -25,9 +25,9 @@ data_group <- as.data.frame(data_group)
 
 # 配色设置
 # 配色设置
-value_colour <- c("High" = "#E64B35FF",
-                  "Low" = "#4DBBD5FA",
-                  "Con" = "#F2A200")
+value_colour <- c("P53_WT" = "#E64B35FF",
+                  "Ctrl" = "#4DBBD5FA")
+                  #"Con" = "#F2A200"
 rownames(data_group) <- data_group$id
 
 ## 1.2 DIA matrix input ----
@@ -48,14 +48,15 @@ rownames(data_anno) <- data_anno$Protein.Group
 
 # 2. Set output category -------------------------------------------------------------
 #dir.create("./03_Result/GO&KEGG/MOLM13")
-dir_QC <- "./03_Result/QC/OCI_AML2/"
-QC_data <- OCI_fill_norm
+dir_QC <- "./03_Result/QC/P53/P53_wt/"
+QC_data <- data_fill_norm
+QC_group <- targeted_group
 # 3. QC ------------------------------------------------------------------------
 ## 3.1 Boxplot -----------------------------------------------------------------
 pdf(file = paste0(dir_QC,"QC_boxplot_normalization.pdf"),
     width = 6,
     height = 4)
-QC_boxplot(QC_data,data_group = data_group,
+QC_boxplot(QC_data,data_group = QC_group,
            value_colour = value_colour,
            title = "normalized data")
 dev.off()
@@ -63,7 +64,7 @@ dev.off()
 pdf(file = paste0(dir_QC,"QC_heatmap_normalization.pdf"),
     width = 6,
     height = 6)
-QC_heatmap(QC_data,data_group = data_group,
+QC_heatmap(QC_data,data_group = QC_group,
            value_colour = value_colour)
 dev.off()
 
@@ -72,7 +73,7 @@ pdf(file = paste0(dir_QC,"QC_pca_normalization.pdf"),
     width = 7,
     height = 7)
 QC_PCA(data = log2(QC_data+1),
-       data_group = data_group,
+       data_group = QC_group,
        value_colour = value_colour)
 dev.off()
 
@@ -84,21 +85,20 @@ data_fill_norm <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv", row.name
 # 注意，data和data_anno的行名应一致
 data_anno <- read.xlsx("./01_Data/data_anno.xlsx",rowNames = TRUE)
 data_anno <- data_anno[rownames(data_anno)%in%rownames(data_fill_norm),]
-
 data_fill_norm <- data_fill_norm[,order(colnames(data_fill_norm))]
 
 ## 4.1 Set output catagory ----
-dir_DE <- "./03_Result/DE/MOLM13/Low_vs_Ctrl/"
+dir_DE <- "./03_Result/Diff_Prote/P53/P53_wt_vs_Ctrl/"
 
 ## 4.2 Set group ----
 data_group <- read.xlsx("./01_Data/IC50_group.xlsx")
 rownames(data_group) <- data_group$id
 data_group <- data_group[order(rownames(data_group)),]
 table(data_group$group)
-targeted_group <- data_group[grep('OCI',data_group$id),]
-
+targeted_group <- data_group[c("MOLM13_6W_3","MOLM13_WT_3","MV4_11_6W_2","MV4_11_6W_3","MV4_11_WT_2","MV4_11_WT_3"),]
+targeted_group$group <- gsub("High","P53_WT",targeted_group$group)
 # 根据分组选择要进行差异分析的组别
-group_1 <- "High"       # group 1为实验组
+group_1 <- "P53_WT"       # group 1为实验组
 group_2 <- "Ctrl"       # group 2为对照组
 
 ## 4.3 Res output ----
@@ -111,7 +111,7 @@ result_merge <- run_DE(data = data_fill_norm,
                        logfc_threshold = 0.25,           # 对应fc约为1.25
                        pvalue_threshold = 0.05,
                        qvalue_threshold = NULL,
-                       dir = "./03_Result/DE/OCI_AML2/")
+                       dir = "./03_Result/Diff_Prote/P53/P53_wt_vs_Ctrl/")
 # 统计上下调基因数量
 table(result_merge$result_merge$Sig)
 
@@ -119,10 +119,10 @@ table(result_merge$result_merge$Sig)
 
 # 5. GO&KEGG ----
 ## 5.1 Set output catagory----
-dir_enrich <- "./03_Result/GO&KEGG/MOLM13/"
+dir_enrich <- "./03_Result/GO&KEGG/P53/P53_WT/"
 
 ## 5.2 DE_res input ----
-DP_result <- read.csv('./03_Result/Diff_Prote/MOLM13/Low_vs_Ctrl/result_DE.csv')
+DP_result <- read.csv('./03_Result/Diff_Prote/P53/P53_wt_vs_Ctrl/P53_WT_vs_Ctrl/result_DE.csv')
 
 ## 5.3 set P.Value ----
 GeneSymbol <- subset(DP_result, P.Value < 0.05)
@@ -248,13 +248,13 @@ dev.off()
 
 ## 5.7 The number of up and down pathways ----
 # 下调GO 
-table(kkd_down@result$p.adjust<0.05)
+table(GO_down@result$p.adjust<0.05)
 # 下调KEGG 
-table(kk_down@result$p.adjust<0.05)
+table(KEGG_down@result$p.adjust<0.05)
 # 上调GO 
-table(kkd_up@result$p.adjust<0.05)
+table(GO_up@result$p.adjust<0.05)
 # 上调KEGG 
-table(kk_up@result$p.adjust<0.05)
+table(KEGG_up@result$p.adjust<0.05)
 
 # 6. Selected pathway ----
 
