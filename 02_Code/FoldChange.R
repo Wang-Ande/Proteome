@@ -279,7 +279,7 @@ rownames(merge_expr_select) <- merge_expr_select$Row.names
 merge_expr_select <- subset(merge_expr_select,select = -c(Row.names))
 
 # cor_matrix <- cor(trans_log2,prote_log2)
-corr_matrix <- cor(prote_log2,trans_log2)
+corr_matrix <- cor(trans_log2)
 
 ## 3. plot ----
 # two visualization methods
@@ -307,6 +307,7 @@ corr_long$Var2 <- factor(corr_long$Var2, levels = ordered_names)
 # plot
 ggplot(corr_long, aes(Var1, Var2, fill = value)) +
   geom_tile() +
+  geom_text(aes(label = round(value, 2)), color = "black", size = 3) +  # 在方块上添加文本
   scale_fill_gradientn(colors = c("white","#AED4E5","#81B5D5","#5795C7","#3371B3","#345D82","#1E4C9C"), 
                        limits = c(0, 1),     # 设定颜色映射范围
                        name = expression(R^2)) +            # 更改图例标题为 R²
@@ -316,4 +317,4 @@ ggplot(corr_long, aes(Var1, Var2, fill = value)) +
         axis.title = element_blank(),                       # 隐藏 X 和 Y 轴标题
         plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),  # 标题居中、加粗
         legend.position = "right")                          # 保持图例在右侧
-ggsave("../FC/P&T_log2_cor_1.pdf", width = 8, height = 7)
+ggsave("../FC/P&T_log2_cor_1.pdf", device = cairo_pdf, width = 9.03, height = 7.74,units = "in")
