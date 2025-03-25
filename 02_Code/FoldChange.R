@@ -234,21 +234,21 @@ prote_anno <- read.xlsx("./01_Data/data_anno.xlsx",rowNames = TRUE)
 prote_anno <- prote_anno[rownames(prote_anno)%in%rownames(prote_expr),]
 
 # subset genenames
-y <- prote_anno$Genes
-gene <- unlist(lapply(y,function(y) strsplit(as.character(y),";")[[1]][1]))
-prote_expr$gene <- gene 
+y <- rownames(trans_expr)
+gene <- unlist(lapply(y,function(y) strsplit(as.character(y),"\\|")[[1]][2]))
+trans_expr$gene <- gene 
 
 # 将rownames由protein.group改为gene
-rownames(prote_expr) <- prote_expr$gene    # gene做为行名重复，进行去重处理
+rownames(trans_expr) <- trans_expr$gene    # gene做为行名重复，进行去重处理
 
-tmp <- prote_expr
+tmp <- trans_expr
 if(T){
   tmp <- tmp[!is.na(tmp$gene), ]                       # remove NA rows
   tmp <- aggregate(. ~ gene, data = tmp, FUN = max)    # remove repeat genes
   rownames(tmp) <- tmp$gene                            # set rownames
   tmp <- tmp[,-1]
 }
-prote_expr <- tmp
+trans_expr <- tmp
 
 # 取交集
 common_set <- intersect(rownames(trans_expr), rownames(prote_expr))
@@ -263,6 +263,7 @@ process_expr_data <- function(expr_data, common_set) {
 # 处理蛋白组和转录组数据
 prote_expr_select <- process_expr_data(prote_expr, common_set)
 trans_expr_select <- process_expr_data(trans_expr, common_set)
+# write.csv(prote_expr_select, file = "../FC/Prote_selected_expr.csv")
 prote_log2 <- log2(prote_expr_select + 1) 
 trans_log2 <- log2(trans_expr_select + 1)
 
@@ -278,13 +279,13 @@ rownames(merge_expr_select) <- merge_expr_select$Row.names
 merge_expr_select <- subset(merge_expr_select,select = -c(Row.names))
 
 # cor_matrix <- cor(trans_log2,prote_log2)
-cor_matrix <- cor(merge_expr_select)
+corr_matrix <- cor(prote_log2,trans_log2)
 
 ## 3. plot ----
 # two visualization methods
 # methods 1
 pdf("../FC/P&T_log2_cor.pdf", width = 15,height = 12)
-cor <- corrplot(cor_matrix, method = "color", type = "upper", 
+cor <- corrplot(corr_matrix, method = "color", type = "upper", 
                 tl.col = "black", tl.srt = 45, addCoef.col = "black",
                 number.cex = 0.7, tl.cex = 0.7)
 dev.off()
@@ -306,13 +307,13 @@ corr_long$Var2 <- factor(corr_long$Var2, levels = ordered_names)
 # plot
 ggplot(corr_long, aes(Var1, Var2, fill = value)) +
   geom_tile() +
-  scale_fill_gradientn(colors = c("#D1E5F0", "#2166AC"), 
-                       limits = c(min(corr_matrix), 1),                  # 设定颜色映射范围
+  scale_fill_gradientn(colors = c("white","#AED4E5","#81B5D5","#5795C7","#3371B3","#345D82","#1E4C9C"), 
+                       limits = c(0, 1),     # 设定颜色映射范围
                        name = expression(R^2)) +            # 更改图例标题为 R²
-  labs(title = "Pearson correlation between samples") +     # 添加标题
+  labs(title = "Pearson correlation") +     # 添加标题
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),  # 旋转 x 轴标签
         axis.title = element_blank(),                       # 隐藏 X 和 Y 轴标题
         plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),  # 标题居中、加粗
         legend.position = "right")                          # 保持图例在右侧
-ggsave("./03_Result/QC/ALL/All_sample_cor.pdf", width = 8, height = 7)
+ggsave("../FC/P&T_log2_cor_1.pdf", width = 8, height = 7)
