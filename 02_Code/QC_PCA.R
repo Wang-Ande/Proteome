@@ -27,7 +27,7 @@ QC_PCA <- function(data, data_group = NULL, value_colour = NULL) {
     dat.pca <- data_pre %>%
       dplyr::select(-c(group, id)) %>%
       PCA(graph = FALSE)
-    fviz_pca_ind(dat.pca,
+    fviz_pca_ind(dat.pca,repel = 2,
                  geom.ind = c("text", "point"), # show points only (but not "text")
                  col.ind = group_list, # color by groups
                  palette = value_colour,
