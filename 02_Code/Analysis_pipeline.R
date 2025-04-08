@@ -17,40 +17,29 @@ source("./02_Code/run_enrichment_analysis.R")
 # 1. Data input ----------------------------------------------------------------
 ## 1.1 Group input ----
 # 导入分组信息
-data_group <- read.excel("./01_Data/IC50_group.xlsx")
+data_group <- read.xlsx("./01_Data/IC50_group.xlsx")
 table(data_group$group)
 data_group <- as.data.frame(data_group)
-
+rownames(data_group) <- data_group$id
+targeted_group <- data_group[c("MOLM13_6W_2","MOLM13_WT_2","MV4_11_6W_2","MV4_11_WT_2","MV4_11_6W_3","MV4_11_WT_3"),]
+targeted_group$group <- gsub("High","P53_WT",targeted_group$group)
 #table(data_group$group)
 
-# 配色设置
 # 配色设置
 value_colour <- c("P53_WT" = "#E64B35FF",
                   "Ctrl" = "#4DBBD5FA")
                   #"Con" = "#F2A200"
-rownames(data_group) <- data_group$id
 
 ## 1.2 DIA matrix input ----
-fill_norm <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv")
-colnames(fill_norm)
-rownames(fill_norm) <- fill_norm$X
-fill_norm <- fill_norm[,-1]
-OCI_fill_norm <- fill_norm[,grep("OCI",colnames(fill_norm))]
-
-# remove abnormal sample
-data_group <- data_group[-grep("4W",data_group$id),]
-fill_norm <- fill_norm[,-grep("4W",colnames(fill_norm))]
-
-# Protein anno input
-data_anno <- read.xlsx("./01_Data/data_anno.xlsx")
-data_anno <- as.data.frame(data_anno)
-rownames(data_anno) <- data_anno$Protein.Group
+fill_norm <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv",row.names = 1)
+# OCI_fill_norm <- fill_norm[,grep("OCI",colnames(fill_norm))]
+targeted_data <- fill_norm[,rownames(targeted_group)]
 
 # 2. Set output category -------------------------------------------------------------
 #dir.create("./03_Result/GO&KEGG/MOLM13")
 dir_QC <- "./03_Result/QC/P53/P53_wt/"
-QC_data <- data_fill_norm
-QC_group <- targeted_group
+QC_data <- targeted_data
+QC_group <- targeted_group[,c(1,2)]
 # 3. QC ------------------------------------------------------------------------
 ## 3.1 Boxplot -----------------------------------------------------------------
 pdf(file = paste0(dir_QC,"QC_boxplot_normalization.pdf"),
@@ -95,15 +84,19 @@ data_group <- read.xlsx("./01_Data/IC50_group.xlsx")
 rownames(data_group) <- data_group$id
 data_group <- data_group[order(rownames(data_group)),]
 table(data_group$group)
-targeted_group <- data_group[c("MOLM13_6W_3","MOLM13_WT_3","MV4_11_6W_2","MV4_11_6W_3","MV4_11_WT_2","MV4_11_WT_3"),]
-targeted_group$group <- gsub("High","P53_WT",targeted_group$group)
+targeted_group <- data_group[c("MOLM13_6W_1","MOLM13_WT_1","MOLM13_6W_3","MOLM13_WT_3","MV4_11_6W_1","MV4_11_WT_1"),]
+table(targeted_group$group)
+targeted_group$group <- gsub("High","P53_Mut",targeted_group$group)
+rownames(targeted_group)
+targeted_group$pair_id <- c(1,1,2,2,3,3)
+targeted_data <- data_fill_norm[,rownames(targeted_group)]
 
 ## 4.3 Res output ----
 group_1 <- "Ctrl"         # group 1为Wild type
-group_2 <- "High"         # group 2为Treatment
+group_2 <- "P53_Mut"         # group 2为Treatment
 source("./02_Code/run_DE.R")
 
-result_merge <- run_DE(data = data_fill_norm,
+result_merge <- run_DE(data = targeted_data,
                        data_group = targeted_group,
                        data_anno = data_anno,
                        group_1 = group_1,
@@ -113,7 +106,7 @@ result_merge <- run_DE(data = data_fill_norm,
                        pvalue_threshold = 0.05,
                        paired = TRUE,
                        pair_col = "pair_id",
-                       dir = "./03_Result/")
+                       dir = "./03_Result/DEP/")
 # 统计上下调基因数量
 table(result_merge$result_merge$Sig)
 
