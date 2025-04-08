@@ -97,21 +97,23 @@ data_group <- data_group[order(rownames(data_group)),]
 table(data_group$group)
 targeted_group <- data_group[c("MOLM13_6W_3","MOLM13_WT_3","MV4_11_6W_2","MV4_11_6W_3","MV4_11_WT_2","MV4_11_WT_3"),]
 targeted_group$group <- gsub("High","P53_WT",targeted_group$group)
-# 根据分组选择要进行差异分析的组别
-group_1 <- "P53_WT"       # group 1为实验组
-group_2 <- "Ctrl"       # group 2为对照组
 
 ## 4.3 Res output ----
+group_1 <- "Ctrl"         # group 1为Wild type
+group_2 <- "High"         # group 2为Treatment
+source("./02_Code/run_DE.R")
+
 result_merge <- run_DE(data = data_fill_norm,
                        data_group = targeted_group,
                        data_anno = data_anno,
-                       log2 = TRUE,
                        group_1 = group_1,
                        group_2 = group_2,
-                       logfc_threshold = 0.25,           # 对应fc约为1.25
+                       log2 = TRUE,
+                       logfc_threshold = 0.25,         # 对应fc为1.25倍
                        pvalue_threshold = 0.05,
-                       qvalue_threshold = NULL,
-                       dir = "./03_Result/Diff_Prote/P53/P53_wt_vs_Ctrl/")
+                       paired = TRUE,
+                       pair_col = "pair_id",
+                       dir = "./03_Result/")
 # 统计上下调基因数量
 table(result_merge$result_merge$Sig)
 
