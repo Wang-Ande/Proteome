@@ -21,12 +21,12 @@ data_group <- read.xlsx("./01_Data/IC50_group.xlsx")
 table(data_group$group)
 data_group <- as.data.frame(data_group)
 rownames(data_group) <- data_group$id
-targeted_group <- data_group[c("MOLM13_6W_2","MOLM13_WT_2","MV4_11_6W_2","MV4_11_WT_2","MV4_11_6W_3","MV4_11_WT_3"),]
-targeted_group$group <- gsub("High","P53_WT",targeted_group$group)
+targeted_group <- data_group[c("MOLM13_6W_1","MOLM13_WT_1","MOLM13_6W_3","MOLM13_WT_3","MV4_11_6W_1","MV4_11_WT_1"),]
+targeted_group$group <- gsub("High","P53_Mut",targeted_group$group)
 #table(data_group$group)
 
 # 配色设置
-value_colour <- c("P53_WT" = "#E64B35FF",
+value_colour <- c("P53_Mut" = "#E64B35FF",
                   "Ctrl" = "#4DBBD5FA")
                   #"Con" = "#F2A200"
 
@@ -37,7 +37,8 @@ targeted_data <- fill_norm[,rownames(targeted_group)]
 
 # 2. Set output category -------------------------------------------------------------
 #dir.create("./03_Result/GO&KEGG/MOLM13")
-dir_QC <- "./03_Result/QC/P53/P53_wt/"
+dir_QC <- "./03_Result/QC/P53/P53_mut/"
+# 下面的QC函数group只包含id 和 group两列
 QC_data <- targeted_data
 QC_group <- targeted_group[,c(1,2)]
 # 3. QC ------------------------------------------------------------------------
@@ -114,10 +115,10 @@ table(result_merge$result_merge$Sig)
 
 # 5. GO&KEGG ----
 ## 5.1 Set output catagory----
-dir_enrich <- "./03_Result/GO&KEGG/P53/P53_WT/"
+dir_enrich <- "./03_Result/GO&KEGG/P53/P53_Mut/"
 
 ## 5.2 DE_res input ----
-DP_result <- read.csv('./03_Result/Diff_Prote/P53/P53_wt_vs_Ctrl/P53_WT_vs_Ctrl/result_DE.csv')
+DP_result <- read.csv('./03_Result/DEP/P53/P53_Mut_vs_Ctrl/result_DE.csv')
 
 ## 5.3 set P.Value ----
 GeneSymbol <- subset(DP_result, P.Value < 0.05)
@@ -173,7 +174,9 @@ write.csv(GO_down@result, file = paste0(dir_enrich, "/GO_down.csv"), quote = F, 
 
 # dotplot
 pdf(file = paste0(dir_enrich, "/GO_down.pdf"), width = 6, height = 7)
-p1 <- dotplot(GO_down, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free') 
+p1 <- dotplot(GO_down, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free') +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1)) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 30))  # 控制每行最多显示40个字符 
 print(p1)
 dev.off()
 
@@ -186,6 +189,10 @@ p2 <- dotplot(KEGG_down,showCategory = 10)
 print(p2)
 dev.off()
 }
+
+# 若提示存在'select()' returned 1:many mapping between keys and columns，可能原因是symbol名同名了，
+# 比如symbol"HBD",既表示hypophosphatemic bone disease，也可以表示hemoglobin subunit delta，因此为出现1：many
+dup_genes <- gene$SYMBOL[duplicated(gene$SYMBOL)]
 
 if(T){
 ## 5.6 up genes ----
@@ -227,7 +234,9 @@ write.csv(GO_up@result, file = paste0(dir_enrich, "/GO_up.csv"), quote = F, row.
 
 # dotplot
 pdf(file = paste0(dir_enrich, "/GO_up.pdf"), width = 6, height = 7)
-p3 <- dotplot(GO_up, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free')
+p3 <- dotplot(GO_up, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free') +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1)) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 30))  # 控制每行最多显示40个字符
 print(p3)
 dev.off()
 
