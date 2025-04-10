@@ -8,6 +8,7 @@ library(clusterProfiler)
 library(pathview)
 library(org.Hs.eg.db)
 library(ggplot2)
+library(stringr)
 source("./02_Code/QC_PCA.R")
 source("./02_Code/QC_boxplot.R")
 source("./02_Code/QC_heatmap.R")
@@ -115,10 +116,10 @@ table(result_merge$result_merge$Sig)
 
 # 5. GO&KEGG ----
 ## 5.1 Set output catagory----
-dir_enrich <- "./03_Result/GO&KEGG/P53/P53_Mut/"
+dir_enrich <- "./03_Result/GO&KEGG/P53/P53_WT/"
 
 ## 5.2 DE_res input ----
-DP_result <- read.csv('./03_Result/DEP/P53/P53_Mut_vs_Ctrl/result_DE.csv')
+DP_result <- read.csv('./03_Result/DEP/P53/P53_WT_vs_Ctrl/result_DE.csv')
 
 ## 5.3 set P.Value ----
 GeneSymbol <- subset(DP_result, P.Value < 0.05)
@@ -173,8 +174,9 @@ KEGG_down <- result_down$enrichKEGG
 write.csv(GO_down@result, file = paste0(dir_enrich, "/GO_down.csv"), quote = F, row.names = F)
 
 # dotplot
-pdf(file = paste0(dir_enrich, "/GO_down.pdf"), width = 6, height = 7)
-p1 <- dotplot(GO_down, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free') +
+pdf(file = paste0(dir_enrich, "/GO_down.pdf"), width = 6, height = 7.5) # 如果用重叠 width = 6.5, height = 8.5 
+p1 <- dotplot(GO_down, showCategory = 5, split = "ONTOLOGY") + 
+  facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free') +
   theme(axis.text.y = element_text(angle = 0, hjust = 1)) +
   scale_y_discrete(labels = function(x) str_wrap(x, width = 30))  # 控制每行最多显示40个字符 
 print(p1)
@@ -233,10 +235,11 @@ KEGG_up <- result_up$enrichKEGG
 write.csv(GO_up@result, file = paste0(dir_enrich, "/GO_up.csv"), quote = F, row.names = F)
 
 # dotplot
-pdf(file = paste0(dir_enrich, "/GO_up.pdf"), width = 6, height = 7)
-p3 <- dotplot(GO_up, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free') +
+pdf(file = paste0(dir_enrich, "/GO_up.pdf"), width = 6, height = 7.5) # 如果用重叠 width = 6.5, height = 8.5 
+p3 <- dotplot(GO_up, showCategory = 5, split = "ONTOLOGY") + 
+  facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free') +
   theme(axis.text.y = element_text(angle = 0, hjust = 1)) +
-  scale_y_discrete(labels = function(x) str_wrap(x, width = 30))  # 控制每行最多显示40个字符
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 35))  # 控制每行最多显示40个字符
 print(p3)
 dev.off()
 
