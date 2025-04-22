@@ -1,7 +1,7 @@
 # library(pathview)
 # library(clusterprofiler)
 kegg <- read.csv("./03_Result/GO&KEGG/OCI_AML2/Low_vs_Con/KEGG_down.csv")
-gene_ids <- "535/1353"
+gene_ids <- "4697/6392/9167/4706/27089/4724/4711/4709/4717/4725/4720/9550/4707/4710/4714/4701/4705/1345/1347/1350/4713/4729/7385/1349/515/4719/529/7386/4723/479/514/4700/10312/4704/9296/1355/535/64077/55967/4715/1353"
 gene_list <- unlist(strsplit(gene_ids, "/"))
 gene <- clusterProfiler::bitr(gene_list, fromType = 'ENTREZID', 
                               toType = 'SYMBOL', OrgDb = org.Hs.eg.db)

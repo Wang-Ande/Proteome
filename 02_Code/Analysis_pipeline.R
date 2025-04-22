@@ -1,14 +1,13 @@
 # 0. Package&Function ----------------------------------------------------------
 library(readxl)
-library(ggplot2)
 library(readr)
 library(dplyr)
 library(openxlsx)
+library(ggplot2)
+library(stringr)
 library(clusterProfiler)
 library(pathview)
 library(org.Hs.eg.db)
-library(ggplot2)
-library(stringr)
 source("./02_Code/QC_PCA.R")
 source("./02_Code/QC_boxplot.R")
 source("./02_Code/QC_heatmap.R")
@@ -116,10 +115,10 @@ table(result_merge$result_merge$Sig)
 
 # 5. GO&KEGG ----
 ## 5.1 Set output catagory----
-dir_enrich <- "./03_Result/GO&KEGG/OCI_AML2/Low_vs_Con/"
+dir_enrich <- "./03_Result/GO&KEGG/P53/P53_WT/"
 
 ## 5.2 DE_res input ----
-DP_result <- read.csv('./03_Result/DEP/OCI_AML2/Low_vs_Ctrl/result_DE.csv')
+DP_result <- read.csv('./03_Result/DEP/P53/P53_WT_vs_Ctrl/result_DE.csv')
 
 ## 5.3 set P.Value ----
 GeneSymbol <- subset(DP_result, P.Value < 0.05)
