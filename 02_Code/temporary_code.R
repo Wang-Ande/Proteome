@@ -1,15 +1,17 @@
-# library(pathview)
-# library(clusterprofiler)
-kegg <- read.csv("./03_Result/GO&KEGG/OCI_AML2/Low_vs_Con/KEGG_down.csv")
-gene_ids <- "4697/6392/9167/4706/27089/4724/4711/4709/4717/4725/4720/9550/4707/4710/4714/4701/4705/1345/1347/1350/4713/4729/7385/1349/515/4719/529/7386/4723/479/514/4700/10312/4704/9296/1355/535/64077/55967/4715/1353"
+library(pathview)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+
+enrich_res <- read.csv("./03_Result/GO&KEGG/P53/P53_WT/KEGG_all_DE.csv")
+pathway_targeted <- enrich_res[grep("Oxidative",enrich_res$Description),]
+gene_ids <- pathway_targeted$geneID
 gene_list <- unlist(strsplit(gene_ids, "/"))
 gene <- clusterProfiler::bitr(gene_list, fromType = 'ENTREZID', 
                               toType = 'SYMBOL', OrgDb = org.Hs.eg.db)
 
 
 # logFC
-DE_gene <- read.csv("./03_Result/DEP/OCI_AML2/Low_vs_Ctrl/result_DE.csv",row.names = 1)
-# Gene_anno <- read.xlsx("./01_Data/data_anno.xlsx",rowNames = TRUE)
+DE_gene <- read.csv("./03_Result/DEP/P53/P53_WT_vs_Ctrl/result_DE.csv",row.names = 1)
 
 y <- DE_gene$Genes
 gene1 <- unlist(lapply(y,function(y) strsplit(as.character(y),";")[[1]][1]))
