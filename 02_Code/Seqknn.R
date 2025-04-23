@@ -3,6 +3,7 @@ library(multiUS)
 
 # 1. Data input ----
 data_input <- read.csv("./01_Data/report.pg_matrix_fill_before.csv",row.names = 1)
+data_input <- data_input[,grep("OCI",colnames(data_input))]
 # 是否进行log2运算？
 data_input <- log2(data_input)
 
@@ -39,7 +40,7 @@ p <- ggplot(NA_ratio,aes(x = NA_ratio, y = reorder(Samples,NA_ratio,decreasing =
   labs( x = "Number of missing rows",
         y = "Samples")
 ggsave(filename = "NA ratio.pdf",device = pdf,plot = p,
-       path = "./03_Result/QC/ALL/",dpi = 300)
+       path = "./03_Result/QC/OCI_AML2/",dpi = 300)
 
 # 计算每个蛋白质的缺失比例
 cutoff_NA_ratio <- 0.5 # defult
@@ -55,4 +56,4 @@ data_fill <- multiUS::seqKNNimp(data = data,k = 8)
 min(data_fill)
 
 # 3. Res output ----
-write.csv(data_fill,file = "./01_Data/report.pg_matrix_fill.csv")
+write.csv(data_fill,file = "./01_Data/OCI_report.pg_matrix_fill.csv")
