@@ -69,7 +69,7 @@ dev.off()
 
 # 4. DE ------------------------------------------------------------------------
 # expr input
-data_fill_norm <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv", row.names = 1)
+data_fill_norm <- read.csv("./01_Data/OCI_report.pg_matrix_fill_norma.csv", row.names = 1)
 
 # anno input
 # 注意，data和data_anno的行名应一致
@@ -78,23 +78,20 @@ data_anno <- data_anno[rownames(data_anno)%in%rownames(data_fill_norm),]
 data_fill_norm <- data_fill_norm[,order(colnames(data_fill_norm))]
 
 ## 4.1 Set output catagory ----
-dir_DE <- "./03_Result/Diff_Prote/P53/P53_wt_vs_Ctrl/"
+dir_DE <- "./03_Result/DEP/OCI_AML2_single_fill/"
 
 ## 4.2 Set group ----
 data_group <- read.xlsx("./01_Data/IC50_group.xlsx")
 rownames(data_group) <- data_group$id
 data_group <- data_group[order(rownames(data_group)),]
 table(data_group$group)
-targeted_group <- data_group[c("MOLM13_6W_1","MOLM13_WT_1","MOLM13_6W_3","MOLM13_WT_3","MV4_11_6W_1","MV4_11_WT_1"),]
-table(targeted_group$group)
-targeted_group$group <- gsub("High","P53_Mut",targeted_group$group)
-rownames(targeted_group)
-targeted_group$pair_id <- c(1,1,2,2,3,3)
+targeted_group <- data_group[grep("OCI",data_group$id),]
+
 targeted_data <- data_fill_norm[,rownames(targeted_group)]
 
 ## 4.3 Res output ----
 group_1 <- "Ctrl"         # group 1为Wild type
-group_2 <- "P53_Mut"         # group 2为Treatment
+group_2 <- "Low"         # group 2为Treatment
 source("./02_Code/run_DE.R")
 
 result_merge <- run_DE(data = targeted_data,
@@ -105,9 +102,9 @@ result_merge <- run_DE(data = targeted_data,
                        log2 = TRUE,
                        logfc_threshold = 0.25,         # 对应fc为1.25倍
                        pvalue_threshold = 0.05,
-                       paired = TRUE,
+                       paired = FALSE,
                        pair_col = "pair_id",
-                       dir = "./03_Result/DEP/")
+                       dir = "./03_Result/DEP/OCI_AML2_single_fill/")
 # 统计上下调基因数量
 table(result_merge$result_merge$Sig)
 
@@ -115,10 +112,10 @@ table(result_merge$result_merge$Sig)
 
 # 5. GO&KEGG ----
 ## 5.1 Set output catagory----
-dir_enrich <- "./03_Result/GO&KEGG/P53/P53_WT/"
+dir_enrich <- "./03_Result/GO&KEGG/OCI_AML2_single_fill/Low_vs_Con/"
 
 ## 5.2 DE_res input ----
-DP_result <- read.csv('./03_Result/DEP/P53/P53_WT_vs_Ctrl/result_DE.csv')
+DP_result <- read.csv('./03_Result/DEP/OCI_AML2_single_fill/Low_vs_Ctrl/result_DE.csv')
 
 ## 5.3 set P.Value ----
 GeneSymbol <- subset(DP_result, P.Value < 0.05)
