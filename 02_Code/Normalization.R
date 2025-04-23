@@ -14,17 +14,16 @@ source("./02_Code/run_enrichment_analysis.R")
 # 1. Data input ----
 ## 1.1 Group input ----
 # 导入分组信息
-data_group <- read_excel("./01_Data/All_group_info.xlsx")
+data_group <- read_excel("./01_Data/IC50_group.xlsx")
 table(data_group$group)
 data_group <- as.data.frame(data_group)
-#data_group <- data_group[-grep("4W",data_group$id),] # 删除4w样本
-data_group$group <- gsub("_VEN","",data_group$group)
+data_group <- data_group[grep("OCI",data_group$id),c("id","group")]
 table(data_group$group)
 # 配色设置
 # 配色设置
-value_colour <- c("MOLM13" = "#E64B35FF",
-                  "MV4_11" = "#4DBBD5FA",
-                  "OCI" = "#F2A200")
+value_colour <- c("Ctrl" = "#E64B35FF",
+                  "Low" = "#4DBBD5FA",
+                  "High" = "#F2A200")
 rownames(data_group) <- data_group$id
 
 ## 1.2 DIA matrix input ----
@@ -57,7 +56,7 @@ data_input <- data_input %>%
 write.csv(data_input,file = "./01_Data/report.pg_matrix_fill_before.csv")
 
 # 将填充后的数据导入
-data_fill <- read_csv("./01_Data/report.pg_matrix_fill.csv")
+data_fill <- read_csv("./01_Data/OCI_report.pg_matrix_fill.csv")
 data_fill <- as.data.frame(data_fill)
 rownames(data_fill) <- data_fill$...1
 data_fill <- subset(data_fill,select = -c(`...1`))
@@ -91,7 +90,7 @@ data_fill <- data_input
 # 2. Normalization -----------------------------------------------------------
 # 设置输出目录
 #dir.create("./03_Result/")
-dir <- "./03_Result/QC/ALL/"
+dir <- "./03_Result/QC/OCI_AML2_single_fill/"
 
 ## 2.1 Intensity normalization ----
 data_before <- log2(data_fill)
@@ -118,7 +117,7 @@ column_medians_2
 
 # 返回log2之前的数据
 data_fill_normalization <- 2 ^ data_after
-write.csv(data_fill_normalization,file = "./01_Data/report.pg_matrix_fill_norma.csv")
+write.csv(data_fill_normalization,file = "./01_Data/OCI_report.pg_matrix_fill_norma.csv")
 
 # 3. QC --------------------------------------------------------------------------
 
@@ -167,7 +166,7 @@ dev.off()
 pdf(file = paste0(dir,"QC_pca_normalization.pdf"),
     width = 7,
     height = 7)
-QC_PCA(data = data_fill_normalization,
+QC_PCA(data = log2(data_fill_normalization),
        data_group = data_group,
        value_colour = value_colour)
 dev.off()
