@@ -1,0 +1,13 @@
+# R 相关
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# 特定文件夹
+01_Data
+03_Result
+
+# 特定文件后缀文件
+*.png
+*.xml
