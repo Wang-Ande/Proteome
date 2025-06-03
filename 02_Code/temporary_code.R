@@ -1,15 +1,17 @@
 # kegg通路图 ----
+library(openxlsx)
 library(pathview)
 library(clusterProfiler)
 library(org.Hs.eg.db)
 
-enrich_res <- read.csv("./03_Result/GO&KEGG/OCI_AML2_single_fill/High_vs_Con/KEGG_all_DE.csv")
-pathway_targeted <- enrich_res[grep("p53",enrich_res$Description),]
+enrich_res <- read.csv("./03_Result/GO&KEGG/MOLM13/High_vs_Con/KEGG_down.csv")
+pathway_targeted <- enrich_res[grep("Oxidative",enrich_res$Description),]
 gene_ids <- pathway_targeted$geneID
 gene_list <- unlist(strsplit(gene_ids, "/"))
 gene <- clusterProfiler::bitr(gene_list, fromType = 'ENTREZID', 
                               toType = 'SYMBOL', OrgDb = org.Hs.eg.db)
 
+write.xlsx(gene, file = "./03_Result/GO&KEGG/MOLM13/High_vs_Con/hsa00190_OXPHOS_genes_down.xlsx")
 
 # logFC
 DE_gene <- read.csv("./03_Result/DEP/OCI_AML2_single_fill/High_vs_Ctrl/result_DE.csv",row.names = 1)
