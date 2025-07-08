@@ -20,7 +20,6 @@ data_group <- as.data.frame(data_group)
 data_group <- data_group[grep("OCI",data_group$id),c("id","group")]
 table(data_group$group)
 # 配色设置
-# 配色设置
 value_colour <- c("Ctrl" = "#E64B35FF",
                   "Low" = "#4DBBD5FA",
                   "High" = "#F2A200")
