@@ -8,6 +8,7 @@ library(stringr)
 library(clusterProfiler)
 library(pathview)
 library(org.Hs.eg.db)
+library(KEGG.db)
 source("./02_Code/QC_PCA.R")
 source("./02_Code/QC_boxplot.R")
 source("./02_Code/QC_heatmap.R")
@@ -155,7 +156,10 @@ kegg <- clusterProfiler::enrichKEGG(gene = gene$ENTREZID,
                                   organism = KEGG_database,
                                   pAdjustMethod = "BH",
                                   pvalueCutoff = 0.05,
-                                  qvalueCutoff = 1)
+                                  qvalueCutoff = 1,
+                                  use_internal_data = T) # 使用本地数据库富集
+# 设置geneID可读格式
+kegg <- setReadable(kegg, OrgDb='org.Hs.eg.db', keyType='ENTREZID')
 
 ## GO、KEGG结果整合 
 result <- list(enrichGO = go, enrichKEGG = kegg)
@@ -216,6 +220,8 @@ kegg <- clusterProfiler::enrichKEGG(gene = gene$ENTREZID,
                                     pAdjustMethod = "BH",
                                     pvalueCutoff = 0.05,
                                     qvalueCutoff = 1)
+# 设置geneID可读格式
+kegg <- setReadable(kegg, OrgDb='org.Hs.eg.db', keyType='ENTREZID')
 
 # GO、KEGG结果整合
 result <- list(enrichGO = go, enrichKEGG = kegg)
@@ -273,6 +279,8 @@ if(T){
                                       pAdjustMethod = "BH",
                                       pvalueCutoff = 0.05,
                                       qvalueCutoff = 1)
+  # 设置geneID可读格式
+  kegg <- setReadable(kegg, OrgDb='org.Hs.eg.db', keyType='ENTREZID')
   
   # GO、KEGG结果整合
   result <- list(enrichGO = go, enrichKEGG = kegg)
