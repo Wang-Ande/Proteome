@@ -20,7 +20,7 @@ library(openxlsx)
 source("./02_Code/extract_expr_by_cell.R")
 # 2. Data input ----
 # load data(standardised)
-expr <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv",row.names = 1)
+expr <- read.csv("./03_Result/DEP/MV4_11_single_fill/High_vs_Ctrl/result_DE.csv",row.names = 1)
 
 # anno input
 # Attention! The rownames of data and data_anno should be consistent
@@ -29,7 +29,7 @@ data_anno <- as.data.frame(data_anno)
 colnames(data_anno)
 rownames(data_anno) <- data_anno$Protein.Group
 data_anno <- data_anno[rownames(data_anno)%in%rownames(expr),]
-y <- data_anno$Genes
+y <- expr$Genes
 gene <- unlist(lapply(y,function(y) strsplit(as.character(y),";")[[1]][1]))
 expr$gene <- gene 
 
