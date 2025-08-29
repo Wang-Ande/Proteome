@@ -230,7 +230,7 @@ ggplot(corr_long, aes(Var1, Var2, fill = value)) +
   geom_tile() +
   scale_fill_gradientn(colors = c("#D1E5F0", "#2166AC"), 
                        limits = c(min(corr_matrix), 1),                  # 设定颜色映射范围
-                       name = expression(R^2)) +            # 更改图例标题为 R²
+                       name = expression(R)) +            # 更改图例标题为 R²
   labs(title = "Pearson correlation between samples") +     # 添加标题
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),  # 旋转 x 轴标签
