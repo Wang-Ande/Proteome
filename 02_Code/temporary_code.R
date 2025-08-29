@@ -518,7 +518,7 @@ ggsave("./03_Result/QC/ALL/All_sample_cor.pdf", width = 8, height = 7)
 
 # DE ------------------------------------------------------------------------
 # expr input
-data_fill_norm <- read.csv("./01_Data/MV4_11_report.pg_matrix_fill_norma.csv", row.names = 1)
+data_fill_norm <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv", row.names = 1)
 
 # anno input
 # 注意，data和data_anno的行名应一致
@@ -527,28 +527,28 @@ data_anno <- data_anno[rownames(data_anno)%in%rownames(data_fill_norm),]
 data_fill_norm <- data_fill_norm[,order(colnames(data_fill_norm))]
 
 ## 4.1 Set output catagory ----
-dir_DE <- "./03_Result/DEP/MV4_11_single_fill/"
+dir_DE <- "./03_Result/DEP/P53/"
 
 ## 4.2 Set group ----
 data_group <- read.xlsx("./01_Data/IC50_group.xlsx")
 rownames(data_group) <- data_group$id
 data_group <- data_group[order(rownames(data_group)),]
 table(data_group$group)
-targeted_group <- data_group[grep("MV4_11",data_group$id),]
-
+targeted_group <- data_group[grep("6W",data_group$id),]
+targeted_group$group <- c("Mut","WT","Mut","Mut","Mut","WT","WT","WT","WT")
 targeted_data <- data_fill_norm[,rownames(targeted_group)]
 
 ## 4.3 Res output ----
 source("./02_Code/run_DE.R")
-group_1 <- "Ctrl"         # group 1为Wild type
-group_2 <- "Low"         # group 2为Treatment
+group_1 <- "WT"         # group 1为Wild type
+group_2 <- "Mut"         # group 2为Treatment
 result_merge <- run_DE(data = targeted_data,
                        data_group = targeted_group,
                        data_anno = data_anno,
                        group_1 = group_1,
                        group_2 = group_2,
                        log2 = TRUE,
-                       logfc_threshold = 0.268,         # 对应fc为1.2倍
+                       logfc_threshold = 0.263,         # 对应fc为1.2倍
                        pvalue_threshold = 0.05,
                        paired = FALSE,
                        pair_col = "pair_id",
@@ -559,17 +559,24 @@ table(result_merge$result_merge$Sig)
 ## 4.4 Annotated volcano plot ----
 
 # 5. GO&KEGG ----
+library(stringr)
+library(ggplot2)
+library(openxlsx)
+library(clusterProfiler)
+library(pathview)
+library(org.Hs.eg.db)
+
 ## 5.1 Set output catagory----
-dir_enrich <- "./03_Result/GO&KEGG/OCI_AML2_single_fill/Low_vs_Con/"
+dir_enrich <- "./03_Result/GO&KEGG/P53/Mut_vs_WT/"
 
 ## 5.2 DE_res input ----
-DP_result <- read.csv('./03_Result/DEP/OCI_AML2_single_fill/Low_vs_Ctrl/result_DE.csv')
+DP_result <- read.csv('./03_Result/DEP/P53/Mut_vs_WT/result_DE.csv')
 
 ## 5.3 set P.Value ----
 GeneSymbol <- subset(DP_result, P.Value < 0.05)
 
 ## 5.4 set cutoff值 ----
-cutoff <- 0.263                  # 对应fc约为1.25
+cutoff <- 0.263                 # 对应fc约为1.2
 
 # 转换基因名 
 y <- GeneSymbol$Genes
@@ -777,7 +784,6 @@ p2 <- ggplot(kegg,aes(x=GeneRatio,y=Description))+
 
 ggsave(plot = p2,filename = "./03_Result/GO&KEGG/MOLM13/6W_vs_WT/downkegg.pdf")
 
-
 # 6.heatmap------
 library(reshape2)
 library(ComplexHeatmap)
@@ -836,3 +842,382 @@ p<- pheatmap(plot_data,name =" -log(pvalue)",
              cluster_cols = T,
              cluster_rows = F,
              color = colorRampPalette(c("white", "blue"))(100))
+
+
+
+
+expr <- expr[,-c(1:5)]
+expr <- expr[,-c(7:13)]
+
+# ClusterGVis ----
+
+# 1. Packages ----
+# Note: please update your ComplexHeatmap to the latest version!
+library(pak)
+pak::pak("junjunlab/ClusterGVis")
+library(ClusterGVis)
+library(grid)
+library(ComplexHeatmap)
+library(clusterProfiler)
+library(TCseq)
+library(e1071)
+library(tkWidgets)
+library(Mfuzz)
+library(circlize)
+library(tidyverse)
+library(ggplot2)
+library(ggstatsplot)
+library(openxlsx)
+source("./02_Code/extract_expr_by_cell.R")
+# 2. Data input ----
+Anova_gene <- expr[expr$ANOVA_p < 0.05,]
+# load data(standardised)
+expr <- read.csv("01_Data/MOLM13_report.pg_matrix_fill_norma.csv",row.names = 1)
+
+# anno input
+# Attention! The rownames of data and data_anno should be consistent
+data_anno <- read.xlsx("./01_Data/data_anno.xlsx")
+data_anno <- as.data.frame(data_anno)
+colnames(data_anno)
+rownames(data_anno) <- data_anno$Protein.Group
+data_anno <- data_anno[rownames(data_anno)%in%rownames(expr),]
+y <- data_anno$Genes
+gene <- unlist(lapply(y,function(y) strsplit(as.character(y),";")[[1]][1]))
+expr$gene <- gene 
+
+expr <- expr[expr$gene%in%Anova_gene$gene,]
+# 将rownames由protein.group改为gene
+rownames(expr) <- expr$gene    # gene做为行名重复，进行去重处理
+
+# 1. 处理 NA 值
+expr <- expr[!is.na(expr$gene), ]  # remove NA rows
+
+# 2. 处理重复基因
+expr <- aggregate(. ~ gene, data = expr, FUN = max)
+
+# 3. 设定 rownames
+rownames(expr) <- expr$gene
+expr <- expr[,-1]
+
+# data group
+sample_group <- read.xlsx("./01_Data/IC50_group.xlsx")
+rownames(sample_group) <- sample_group$id
+table(sample_group$group)
+OCI_group <- sample_group[grep("OCI",sample_group$id),]
+MOLM13_group <- sample_group[grep("MOLM13",sample_group$id),]
+MV4_11_group <- sample_group[grep("MV4_11",sample_group$id),]
+
+## 2.1 Data preprocess ----
+# expr: 行是蛋白，列是样本
+expr_var <- apply(expr, 1, var)
+
+# 选取方差变异最大的前2000个蛋白
+high_var_proteins <- names(sort(expr_var, decreasing = TRUE))[1:2000]
+
+expr_subset <- expr[high_var_proteins, ]
+
+
+# 要求输入归一化之后的数据（已进行中位值归一化）
+expr_log2 <- log2(expr_subset)
+colnames(expr_log2)
+
+## 2.2 caculate average ----
+### 2.2.1 approach 1 -----------------------------------------------------------
+library(limma)
+# limma::avereps：这是来自 limma 包的函数，avereps 用于对重复数据进行平均值计算。
+# avereps 会根据指定的 ID 进行分组，并对相同 ID 的数据取平均值
+# check
+rownames(OCI_group) == colnames(expr_log2)
+colnames(expr_log2) <-OCI_group$group    # 修改表达矩阵的列名
+avereps_df <- t(limma::avereps(t(expr_log2) , ID = colnames(expr_log2))) #对相同时间序列的表达值取平均
+avereps_df[1:3,1:3]
+avereps_df <- avereps_df[,c("Ctrl","Low","High")]
+save(avereps_df,file = './03_Result/C_means_cluster/IC50 group/OCI_single_fill/avereps_df.Rdata')
+
+### 2.2.2 approach 2 -----------------------------------------------------------
+# 处理列名，去掉 `.1`, `.2` 这种后缀
+colnames(expr_molm13) <- sub("\\..*", "", colnames(expr_molm13))
+selected_mean <- apply(expr_molm13[, c(2, 7, 8)], 1, mean, na.rm = TRUE)
+selected_mean <- as.data.frame(selected_mean)
+expr_molm13[,"34"] <- selected_mean$selected_mean
+expr_molm13 <- expr_molm13[,-c(7,8)]
+
+# 按列名数值大小排序
+expr_molm13 <- expr_molm13[, order(as.numeric(colnames(expr_molm13)))]
+avereps_df <- expr_molm13
+
+# 3. Cluster ----
+## 3.1 Set output path ----
+dir_cl <- "./03_Result/C_means_cluster/IC50 group/OCI_single_fill/"
+exps <- as.matrix(avereps_df) 
+
+# check optimal cluster numbers
+pdf(paste0(dir_cl,"Elbow_plot.pdf"),width = 6,height = 5)
+getClusters(obj = exps)
+dev.off()
+# choose 5
+
+## 3.2 mfuzz for clustering ----
+cm <- clusterData(obj = exps,
+                  scaleData = TRUE,
+                  seed = 123,
+                  cluster.method = "mfuzz",
+                  cluster.num = 5)
+save(cm,file = paste0(dir_cl,"C-Means_res.Rdata"))
+
+## 3.3 kmeans for clustering ----
+km <- clusterData(obj = exps,
+                  scaleData = TRUE,
+                  cluster.method = "kmeans",
+                  cluster.num = 5,
+                  seed = 123)
+
+# 4. Plot ----
+## 4.1 plot line only ----
+visCluster(object = cm,
+           plot.type = "line")
+
+# change color
+visCluster(object = km,
+           plot.type = "line",
+           ms.col = c("green","orange","red"))
+
+# remove meadian line
+pdf(paste0(dir_cl,"Cluster_lineplot.pdf"),width = 8,height = 5)
+visCluster(object = cm,
+           plot.type = "line",
+           ms.col = c("green","orange","red"),
+           add.mline = FALSE)
+dev.off()
+
+## 4.2 plot heatmap only ----
+pdf(paste0(dir_cl,'Cluster_heatmap.pdf'),height = 10,width = 6)
+visCluster(object = cm,
+           plot.type = "both",
+           column_names_rot = 45)
+dev.off()
+
+# 5. Enrich analysis ----
+library(org.Hs.eg.db)
+
+##  5.1 enrich for clusters ----
+enrich <- enrichCluster(object = cm,
+                        OrgDb = org.Hs.eg.db,
+                        type = "BP",
+                        id.trans = TRUE,
+                        fromType = "SYMBOL",
+                        toType = c("ENTREZID"),
+                        readable = TRUE,
+                        pvalueCutoff = 0.05,
+                        topn = 5,
+                        seed = 5201314)
+save(enrich,file = (paste0(dir_cl,"enrich.Rdata")))
+
+# check
+head(enrich,3)
+
+# cluster num
+cl_num <- 5   # ggsci::pal_d3()(cl_num) 
+
+## 5.2 plot ----
+cairo_pdf(paste0(dir_cl,'Cluster_enrichplot.pdf'),
+          height = 7.5,width = 10,onefile = F)
+visCluster(object = cm,
+           plot.type = "both",
+           column_names_rot = 45,
+           show_row_dend = F,
+           markGenes.side = "left",
+           genes.gp = c('italic',fontsize = 12,col = "black"),
+           annoTerm.data = enrich,
+           line.side = "left",
+           go.col = rep(ggsci::pal_d3()(cl_num),each = 5), 
+           go.size = "pval")
+dev.off()
+
+## 5.3 all Enrichpathway ----
+# The above fun() only shows the top 5 pathways, 
+# so we need the next fun() to display all pathways.
+# Gene prepare
+source("./02_Code/Extract_genes.R")
+load("./03_Result/C_means_cluster/IC50 group/OCI_single_fill/C-Means_res.Rdata")
+
+# subset target cluster gene
+targeted_genes <- extract_genes(cm, cl = 5, membership_threshold = 0)
+
+# set database
+GO_database <- 'org.Hs.eg.db'  # GO is org.Hs.eg.db database
+KEGG_database <- 'hsa'         # KEGG is hsa database
+
+# gene ID转换 
+gene <- clusterProfiler::bitr(targeted_genes, fromType = 'SYMBOL', 
+                              toType = 'ENTREZID', OrgDb = GO_database)
+
+# GO 
+# GO富集分析
+go <- clusterProfiler::enrichGO(gene = gene$ENTREZID, 
+                                OrgDb = GO_database, 
+                                keyType = "ENTREZID", 
+                                ont = "ALL",          # (ALL,BP,CC,MF）
+                                pvalueCutoff = 0.05,
+                                qvalueCutoff = 1)   
+
+# KEGG 
+# KEGG富集分析
+kegg <- clusterProfiler::enrichKEGG(gene = gene$ENTREZID,
+                                    keyType = "kegg",
+                                    organism = KEGG_database,
+                                    pAdjustMethod = "BH",
+                                    pvalueCutoff = 0.05,
+                                    qvalueCutoff = 1)
+
+#GO、KEGG结果整合 
+result <- list(enrichGO = go, enrichKEGG = kegg)
+GO_res <- result$enrichGO
+KEGG_res <- result$enrichKEGG
+
+# Res output
+dir_enrich <- "./03_Result/C_means_cluster/IC50 group/OCI_single_fill/Cluster5/"
+if(T){
+  # output enrichGO 
+  write.xlsx(GO_res@result, file = paste0(dir_enrich, "/GO_membership_0.xlsx"))
+  pdf(file = paste0(dir_enrich, "/GO_membership_0.pdf"), width = 6, height = 8)
+  p1 <- dotplot(GO_res, showCategory = 5, split = "ONTOLOGY") + facet_grid(ONTOLOGY ~ ., scale = 'free', space = 'free') +
+    theme(axis.text.y = element_text(angle = 0, hjust = 1)) +
+    scale_y_discrete(labels = function(x) str_wrap(x, width = 30))  # Show a maximum of 40 characters 
+  print(p1)
+  dev.off()
+  
+  # output enrichKEGG
+  write.xlsx(KEGG_res@result, file = paste0(dir_enrich, "/KEGG_membership_0.xlsx"))
+  pdf(file = paste0(dir_enrich, "/KEGG_membership_0.pdf"), width = 6, height = 5)
+  p2 <- dotplot(KEGG_res,showCategory = 10)
+  print(p2)
+  dev.off()
+}
+
+# dotplot
+# ggplot2画气泡图，scale_color_gradient设置蓝红配色
+library(ggplot2)
+library(stringr)
+
+# Enrich_res input 
+Enrich_res <- read.xlsx("./03_Result/C_means_cluster/")
+Enrich_res <- Enrich_res[Enrich_res$pvalue<0.05,]
+# 按 p 值升序排序后，取前 20 行（最显著的 20 个结果）
+Enrich_res <- head(Enrich_res, 20)                    # 取前 20 行
+Enrich_res <- Enrich_res[order(-Enrich_res$pvalue), ]  # 按 p 值排序
+
+Enrich_res$Description <- factor(Enrich_res$Description, 
+                                 levels = unique(Enrich_res$Description))
+#Enrich_res <- Enrich_res[order(Enrich_res$Count),]
+
+pdf(file =paste0(dir_enrich,"KEGG_dw_ms_0_selected.pdf") ,
+    width = 5, height = 6 )
+p2 <- ggplot(Enrich_res,aes(x=Count,y=Description))+
+  geom_point(aes(size=Count,color= -log10(pvalue)))+
+  theme_bw()+labs(y="",x="Count")+ 
+  scale_color_gradient(low = "lightblue", high = "darkblue")+
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 40)) +  # 动态换行
+  theme(axis.text.y = element_text(angle = 0, hjust = 1))  
+print(p2)      
+dev.off()
+#scale_size_continuous(range = c(3, 12))+  # 调整气泡的大小范围
+#调整Y轴标签角度
+
+
+# 过滤KEGG富集分析
+# enrich dotplot ----
+# ggplot2画气泡图，scale_color_gradient设置蓝红配色
+library(openxlsx)
+library(ggplot2)
+library(stringr)
+library(scales)
+
+# Enrich_res input 
+Enrich_res <- read.csv("./03_result/GO&KEGG/MOLM13_single_fill/High_vs_Con/KEGG_up.csv")
+output_dir <- "./03_result/GO&KEGG/MOLM13_single_fill/High_vs_Con/ggplot2/"
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+}
+
+# Kegg pathway blacklist screening
+kegg_blacklist <- read.csv("D:/R/RStudio/Code_Box/ClusterProfiler/kegg_blacklist.csv")
+Enrich_res$ID <- gsub("hsa0", "", Enrich_res$ID)
+Enrich_res <- Enrich_res[!Enrich_res$ID%in%kegg_blacklist$id,]
+
+# 保存过滤后的结果
+write.xlsx(Enrich_res, file = file.path(output_dir, "kegg_up.xlsx"))
+
+if(T){
+  # pvalue threshold
+  Enrich_res <- Enrich_res[Enrich_res$pvalue<0.05,]
+  
+  # GeneRatio compute
+  Enrich_res$GeneRatio <- round(
+    as.numeric(sub("/.*", "", Enrich_res$GeneRatio)) / 
+      as.numeric(sub(".*/", "", Enrich_res$GeneRatio)),
+    3
+  )
+  
+  # 按 pvalue 升序，取前 25
+  Enrich_res <- Enrich_res[order(Enrich_res$pvalue), ]
+  Enrich_res <- head(Enrich_res, 25)
+  
+  # 设置排列顺序，按X轴大小
+  Enrich_res$Description <- factor(
+    Enrich_res$Description, 
+    levels = Enrich_res$Description[order(Enrich_res$GeneRatio, decreasing = FALSE)]
+  )
+  
+  # 绘图
+  p2 <- ggplot(Enrich_res, aes(x = GeneRatio, y = Description)) +
+    geom_point(
+      aes(size = Count, fill = pvalue),  # 用 fill 映射颜色
+      shape = 21,                        # 有边框的点
+      color = "black",                   # 边框颜色
+      stroke = 0.6
+    ) +
+    theme_bw() +
+    labs(y = "", x = "GeneRatio") +
+    scale_size(name = "Count") +         # 自定义图例标题
+    scale_fill_gradient(name = "pvalue", low = "#e06663", high = "#327eba") +  # 用 fill 控制颜色
+    scale_x_continuous(labels = scales::number_format(accuracy = 0.01)) +  # x轴保留两位
+    scale_y_discrete(labels = function(x) str_wrap(x, width = 40)) +
+    scale_size_continuous(range = c(2, 8))+  # 调整气泡的大小范围
+    guides(
+      fill = guide_colorbar(order = 1),  # pvalue 图例在上面
+      size = guide_legend(
+        order = 2,
+        override.aes = list(
+          shape = 21,           # 必须指定，不然没边框
+          color = "black",      # 边框颜色
+          fill = "transparent"  # 填充透明
+        )
+      )
+    ) +
+    theme(
+      text = element_text(family = "sans", colour = "black"),
+      axis.title.x = element_text(size = 12), 
+      axis.text.x = element_text(size = 10),
+      axis.text.y = element_text(angle = 0, hjust = 1 ,size = 12, colour = "black"),
+      legend.text = element_text(size = 8),
+      legend.title = element_text(size = 12))
+  x_max <- max(Enrich_res$GeneRatio, na.rm = TRUE)
+  p2 <- p2 + 
+    scale_x_continuous(
+      labels = scales::number_format(accuracy = 0.01),
+      limits = c(min(Enrich_res$GeneRatio, na.rm = TRUE), x_max * 1.05)  # 右边界比最大值大 5%
+    )
+}
+# print(p2)
+# 用 ggsave 保存
+
+ggsave(
+  filename = file.path(output_dir, "KEGG_up.pdf"),
+  plot = p2,
+  width = 6.5,   # 默认6.5
+  height = 7.5,  # 默认7.5
+  units = "in"   # 单位可选 "in", "cm", "mm"
+)
+# scale_size_continuous(range = c(3, 12))+  # 调整气泡的大小范围
+

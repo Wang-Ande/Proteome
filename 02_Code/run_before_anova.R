@@ -1,29 +1,27 @@
 # 必要包
 library(car)
+library(readr)
+library(openxlsx)
 library(dplyr)
-
 
 # data：行为蛋白，列为样本的 log2 表达矩阵（data.frame or matrix）
 # group：因子变量，表示每列样本的组别，长度 == ncol(data)
-data <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv", row.names = 1)
+data <- read.csv("./01_Data/MV4_11_report.pg_matrix_fill.csv", row.names = 1)
 group <- read.xlsx("./01_Data/IC50_group.xlsx")
 head(data)
 head(group)
-data_target <- data[,grep("MV4_11", colnames(data))]
-group_target <- group[grep("MV4_11", group$id),]
+rownames(group) <- group$id
+data_target <- data
+group_target <- group[grep("MV4_11", group$id), ]
 
 # 创建分组因子
-group_target <- factor(group_target$group, levels =  c("Ctrl", "Low", "High"))  
+group_target$group <- factor(group_target$group, levels =  c("Ctrl", "Low", "High"))  
 
 # 转置表达矩阵：行为样本，列为蛋白
 expr_matrix <- t(log2(data_target))        # log2 标准化处理
 
 # 对比样本名和分组，需确保完全对应
-data.frame(
-  Sample = rownames(expr_matrix),
-  Group = group_target
-)
-
+identical(rownames(expr_matrix),rownames(group_target)) 
 
 # 准备结果存储表
 check_results <- data.frame(
@@ -76,4 +74,4 @@ anova_proteins <- check_results %>% filter(recommended_method == "ANOVA")
 nonparametric_proteins <- check_results %>% filter(recommended_method == "Kruskal-Wallis")
 
 # 保存为csv（可选）
-write.csv(check_results, "./03_Result/ANOVA/MV4_11/anova_check_results.csv", row.names = FALSE)
+write.csv(check_results, "./03_Result/ANOVA/MOLM13/anova_check_results.csv", row.names = FALSE)
