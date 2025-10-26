@@ -108,7 +108,13 @@ result_merge <- run_DE(data = targeted_data,
                        dir = "./03_Result/DEP/OCI_AML2_single_fill/")
 # 统计上下调基因数量
 table(result_merge$result_merge$Sig)
-
+# 导出差异蛋白列表（用于string网络分析、C-means聚类分析等......）
+DE_Protein <- read.csv('./03_Result/DEP/P53/Mut_vs_WT/result_DE.csv')
+y <- DE_Protein$Genes
+gene <- unlist(lapply(y,function(y) strsplit(as.character(y),";")[[1]][1]))
+DE_Protein$gene <- gene
+DE_Protein <- DE_Protein[,c("gene","logFC","P.Value","adj.P.Val","Sig")]
+write.xlsx(DE_Protein, file = "./03_Result/DEP/P53/Mut_vs_WT/DE_Protein_Names.xlsx")
 ## 4.4 Annotated volcano plot ----
 
 # 5. GO&KEGG ----
