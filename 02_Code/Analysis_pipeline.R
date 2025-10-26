@@ -27,9 +27,9 @@ targeted_group$group <- gsub("High","P53_Mut",targeted_group$group)
 #table(data_group$group)
 
 # 配色设置
-value_colour <- c("P53_Mut" = "#E64B35FF",
-                  "Ctrl" = "#4DBBD5FA")
-                  #"Con" = "#F2A200"
+value_colour <- c("MOLM13" = "#E64B35FF",
+                  "MV4" = "#3C5488FF",
+                  "OCI" = "#F2A200")
 
 ## 1.2 DIA matrix input ----
 fill_norm <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv",row.names = 1)
@@ -38,7 +38,7 @@ targeted_data <- fill_norm[,rownames(targeted_group)]
 
 # 2. Set output category -------------------------------------------------------------
 #dir.create("./03_Result/GO&KEGG/MOLM13")
-dir_QC <- "./03_Result/QC/P53/P53_mut/"
+dir_QC <- "./03_Result/QC/ALL/"
 # 下面的QC函数group只包含id 和 group两列
 QC_data <- targeted_data
 QC_group <- targeted_group[,c(1,2)]
@@ -52,7 +52,7 @@ QC_boxplot(QC_data,data_group = QC_group,
            title = "normalized data")
 dev.off()
 ## 3.2 Heatmap -----------------------------------------------------------------
-pdf(file = paste0(dir_QC,"QC_heatmap_normalization.pdf"),
+pdf(file = paste0(dir_QC,"QC_heatmap_normalization_1.pdf"),
     width = 6,
     height = 6)
 QC_heatmap(QC_data,data_group = QC_group,
@@ -69,8 +69,10 @@ QC_PCA(data = log2(QC_data+1),
 dev.off()
 
 # 4. DE ------------------------------------------------------------------------
+library(openxlsx)
+library(readr)
 # expr input
-data_fill_norm <- read.csv("./01_Data/OCI_report.pg_matrix_fill_norma.csv", row.names = 1)
+data_fill_norm <- read.csv("./01_Data/MV4_11_report.pg_matrix_fill_norma.csv", row.names = 1)
 
 # anno input
 # 注意，data和data_anno的行名应一致
@@ -79,20 +81,24 @@ data_anno <- data_anno[rownames(data_anno)%in%rownames(data_fill_norm),]
 data_fill_norm <- data_fill_norm[,order(colnames(data_fill_norm))]
 
 ## 4.1 Set output catagory ----
-dir_DE <- "./03_Result/DEP/OCI_AML2_single_fill/"
+dir_DE <- "./03_Result/DEP/MV4_single_fill/"
 
 ## 4.2 Set group ----
 data_group <- read.xlsx("./01_Data/IC50_group.xlsx")
 rownames(data_group) <- data_group$id
 data_group <- data_group[order(rownames(data_group)),]
-table(data_group$group)
-targeted_group <- data_group[grep("OCI",data_group$id),]
+print(table(data_group$group))
+targeted_group <- data_group[grep("MV4",data_group$id),]
+# oci去除4w样本
+targeted_group <- targeted_group[-grep("4W",targeted_group$id),]
+# MV4 去除6w_1样本
+targeted_group <- targeted_group[-grep("6W_1",targeted_group$id),]
 
 targeted_data <- data_fill_norm[,rownames(targeted_group)]
 
 ## 4.3 Res output ----
 group_1 <- "Ctrl"         # group 1为Wild type
-group_2 <- "Low"         # group 2为Treatment
+group_2 <- "High"         # group 2为Treatment
 source("./02_Code/run_DE.R")
 
 result_merge <- run_DE(data = targeted_data,
@@ -105,9 +111,16 @@ result_merge <- run_DE(data = targeted_data,
                        pvalue_threshold = 0.05,
                        paired = FALSE,
                        pair_col = "pair_id",
-                       dir = "./03_Result/DEP/OCI_AML2_single_fill/")
+                       dir = "./03_Result/DEP/MV4_single_fill/")
 # 统计上下调基因数量
 table(result_merge$result_merge$Sig)
+# 导出差异蛋白列表（用于string网络分析、C-means聚类分析等......）
+DE_Protein <- read.csv('./03_Result/DEP/MV4_single_fill/High_vs_Ctrl/result_DE.csv')
+y <- DE_Protein$Genes
+gene <- unlist(lapply(y,function(y) strsplit(as.character(y),";")[[1]][1]))
+DE_Protein$gene <- gene
+DE_Protein <- DE_Protein[,c("gene","logFC","P.Value","adj.P.Val","Sig")]
+write.xlsx(DE_Protein, file = "./03_Result/DEP/MV4_single_fill/High_vs_Ctrl/DE_Protein_Names.xlsx")
 
 ## 4.4 Annotated volcano plot ----
 
