@@ -3,7 +3,8 @@ library(multiUS)
 
 # 1. Data input ----
 data_input <- read.csv("./01_Data/report.pg_matrix_fill_before.csv",row.names = 1)
-data_input <- data_input[,grep("OCI",colnames(data_input))]
+data_input <- data_input[,grep("MV4",colnames(data_input))]
+data_input <- data_input[,-grep("MV4_11_6W_1",colnames(data_input))]
 # 是否进行log2运算？
 data_input <- log2(data_input)
 
@@ -40,7 +41,7 @@ p <- ggplot(NA_ratio,aes(x = NA_ratio, y = reorder(Samples,NA_ratio,decreasing =
   labs( x = "Number of missing rows",
         y = "Samples")
 ggsave(filename = "NA ratio.pdf",device = pdf,plot = p,
-       path = "./03_Result/QC/OCI_AML2/",dpi = 300)
+       path = "./03_Result/QC/MV4_11_single_fill/",dpi = 300)
 
 # 计算每个蛋白质的缺失比例
 cutoff_NA_ratio <- 0.5 # defult
@@ -55,5 +56,46 @@ data <- data_input[rownames(data_input)%in%rownames(NA_ratio_protein),]
 data_fill <- multiUS::seqKNNimp(data = data,k = 8)
 min(data_fill)
 
-# 3. Res output ----
-write.csv(data_fill,file = "./01_Data/OCI_report.pg_matrix_fill.csv")
+write.csv(data_fill,file = "./01_Data/MV4_11_report.pg_matrix_fill.csv")
+
+# 3. Normalization -----------------------------------------------------------
+# 
+# 将填充后的数据导入
+data_fill <- read_csv("./01_Data/MV4_11_report.pg_matrix_fill.csv")
+data_fill <- as.data.frame(data_fill)
+rownames(data_fill) <- data_fill$...1
+data_fill <- subset(data_fill,select = -c(`...1`))
+
+# 如果进行了median normalization运算，运行下面的函数
+data_fill <- sweep(data_fill, 2, median_values, `*`)
+
+# 如果进行log2处理，运行下面的函数
+data_fill <- 2 ^ data_fill
+
+## 3.1 Intensity normalization ----
+data_before <- log2(data_fill)
+
+# 计算校正前各样本的intensity median
+column_medians <- apply(data_before, 2, median, na.rm = TRUE)
+column_medians
+
+# 目标中位数
+target_median <- max(column_medians)
+data_after <- data_before
+for (col in names(data_after)) {
+  if (is.numeric(data_after[[col]])) {
+    # 防止除以零的情况
+    if (column_medians[col] != 0) {
+      data_after[[col]] <- data_after[[col]] / column_medians[col] * target_median
+    }
+  }
+}
+
+# 验证校正后各样本intensity median是否一致
+column_medians_2 <- apply(data_after, 2, median, na.rm = TRUE)
+column_medians_2
+
+# 返回log2之前的数据
+data_fill_normalization <- 2 ^ data_after
+# 4. Res output ----
+write.csv(data_fill_normalization,file = "./01_Data/MV4_11_report.pg_matrix_fill_norma.csv")

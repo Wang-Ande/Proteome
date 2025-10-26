@@ -133,9 +133,9 @@ run_DE <- function(data, data_group, data_anno=NULL, log2,
     scale_color_manual(
       name = "Change",
       values = c("up" = "#B30000", "stable" = "grey", "down" = "#003366"),
-      labels = c("up" = paste0("Up ：", sum(DE_res$Sig == "up")),
-                 "stable" = paste0("Stable ：", sum(DE_res$Sig == "stable")),
-                 "down" = paste0("Down ：", sum(DE_res$Sig == "down"))))+
+      labels = c("up" = paste0("Up :", sum(DE_res$Sig == "up")),
+                 "stable" = paste0("Stable :", sum(DE_res$Sig == "stable")),
+                 "down" = paste0("Down :", sum(DE_res$Sig == "down"))))+
     geom_vline(xintercept = c(-logfc_threshold, logfc_threshold), lty = 4, 
                col = "black", lwd = 0.8, alpha = 0.4) +
     geom_hline(yintercept = -log10(pvalue_threshold), lty = 4, 
@@ -148,6 +148,65 @@ run_DE <- function(data, data_group, data_anno=NULL, log2,
   ggsave(filename = paste0(output_dir,"/volc.pdf"),
          plot = p, device = "pdf", 
          width = 6, height = 5)
+  
+  ### --------------------------
+  ### 生成差异分析报告 (txt)
+  ### --------------------------
+  
+  report_file <- paste0(output_dir, "/DE_report.txt")
+  timestamp <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+  
+  # 基本统计
+  total_gene <- nrow(result_merge)
+  up_gene <- sum(result_merge$Sig == "up", na.rm = TRUE)
+  down_gene <- sum(result_merge$Sig == "down", na.rm = TRUE)
+  stable_gene <- sum(result_merge$Sig == "stable", na.rm = TRUE)
+  
+  sig_genes <- result_merge %>% 
+    filter(Sig %in% c("up", "down")) %>% 
+    arrange(P.Value)
+  
+  top_up <- sig_genes %>% filter(Sig == "up") %>% head(10)
+  top_down <- sig_genes %>% filter(Sig == "down") %>% head(10)
+  
+  sink(report_file)
+  cat("============================================\n")
+  cat("         差异表达分析报告\n")
+  cat("============================================\n")
+  cat("分析时间: ", timestamp, "\n\n")
+  
+  cat("【比较分组】\n")
+  cat("Group 1:", group_1, "\n")
+  cat("Group 2:", group_2, "\n\n")
+  
+  cat("【分析参数】\n")
+  cat("log2 transform:", log2, "\n")
+  cat("logFC 阈值:", logfc_threshold, "\n")
+  cat("P value 阈值:", pvalue_threshold, "\n")
+  if (!is.null(qvalue_threshold)) cat("Q value 阈值:", qvalue_threshold, "\n")
+  cat("是否配对分析:", paired, "\n\n")
+  
+  cat("【结果统计】\n")
+  cat("总基因数:", total_gene, "\n")
+  cat("上调基因数:", up_gene, "\n")
+  cat("下调基因数:", down_gene, "\n")
+  cat("未显著变化基因数:", stable_gene, "\n\n")
+  
+  cat("【显著上调基因 Top 5】\n")
+  if (nrow(top_up) > 0) print(top_up[, c("Genes", "logFC", "P.Value", "adj.P.Val")])
+  cat("\n")
+  
+  cat("【显著下调基因 Top 5】\n")
+  if (nrow(top_down) > 0) print(top_down[, c("Genes", "logFC", "P.Value", "adj.P.Val")])
+  cat("\n")
+  
+  cat("--------------------------------------------\n")
+  cat("【输出文件】\n")
+  cat("- 差异结果表: ", paste0(output_dir, "/result_DE.csv"), "\n")
+  cat("- 火山图: ", paste0(output_dir, "/volc.pdf"), "\n")
+  cat("- 报告文件: ", report_file, "\n")
+  cat("============================================\n")
+  sink()
   
   return(list(result_merge = result_merge, DE_res = DE_res))
 }
