@@ -180,7 +180,7 @@ table(gsea_results_C2@result$pvalue < 0.05)
 # 结果导出
 C2_results <- as.data.frame(gsea_results_C2)
 write.xlsx(C2_results,file = paste0(dir,"C2/C2_results.xlsx"))
-save(C2_results, file = paste0(dir,"C2/C2_results.RData"))   # S4 res
+save(gsea_results_C2, file = paste0(dir,"C2/C2_results.RData"))   # S4 res
 
 
 # 可视化
@@ -242,7 +242,7 @@ table(gsea_results_C4@result$pvalue < 0.05)
 # 结果导出
 C4_results <- as.data.frame(gsea_results_C4)
 write.xlsx(C4_results,file = paste0(dir,"C4/C4_results.xlsx"))
-save(C4_results, file = paste0(dir,"C4/C4_results.RData"))   # S4 res
+save(gsea_results_C4, file = paste0(dir,"C4/C4_results.RData"))   # S4 res
 
 # 可视化
 #dotplot(gsea_results_C4, showCategory = Inf, label_format = 100)
@@ -335,7 +335,7 @@ table(gsea_results_C7@result$pvalue < 0.05)
 # 结果导出
 C7_results <- as.data.frame(gsea_results_C7)
 write.xlsx(C7_results,file = paste0(dir,"C7/C7_results.xlsx"))
-save(C7_results, file = paste0(dir,"C7/C7_results.RData"))   # S4 res
+save(gsea_results_C7, file = paste0(dir,"C7/C7_results.RData"))   # S4 res
 
 
 # 可视化
