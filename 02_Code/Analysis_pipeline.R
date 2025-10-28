@@ -126,10 +126,10 @@ write.xlsx(DE_Protein, file = "./03_Result/DEP/MV4_single_fill/High_vs_Ctrl/DE_P
 
 # 5. GO&KEGG ----
 ## 5.1 Set output catagory----
-dir_enrich <- "./03_Result/GO&KEGG/OCI_AML2_single_fill/Low_vs_Con/"
+dir_enrich <- "./03_Result/GO&KEGG/MV4_11_single_fill/High_vs_Con/"
 
 ## 5.2 DE_res input ----
-DP_result <- read.csv('./03_Result/DEP/OCI_AML2_single_fill/Low_vs_Ctrl/result_DE.csv')
+DP_result <- read.csv('./03_Result/DEP/MV4_single_fill/High_vs_Ctrl/result_DE.csv')
 
 ## 5.3 set P.Value ----
 GeneSymbol <- subset(DP_result, P.Value < 0.05)
@@ -159,7 +159,7 @@ go <- clusterProfiler::enrichGO(gene = gene$ENTREZID,
                                  OrgDb = GO_database, 
                                  keyType = "ENTREZID", 
                                  ont = "ALL",           #(ALL,BP,CC,MF）
-                                 pvalueCutoff = 0.05,
+                                 pvalueCutoff = 0.5,
                                  qvalueCutoff = 1)    
 
 ### 5.5.2 KEGG ----
@@ -168,7 +168,7 @@ kegg <- clusterProfiler::enrichKEGG(gene = gene$ENTREZID,
                                   keyType = "kegg",
                                   organism = KEGG_database,
                                   pAdjustMethod = "BH",
-                                  pvalueCutoff = 0.05,
+                                  pvalueCutoff = 0.5,
                                   qvalueCutoff = 1,
                                   use_internal_data = T) # 使用本地数据库富集
 # 设置geneID可读格式
@@ -222,7 +222,7 @@ go <- clusterProfiler::enrichGO(gene = gene$ENTREZID,
                                 OrgDb = GO_database, 
                                 keyType = "ENTREZID", 
                                 ont = "ALL", 
-                                pvalueCutoff = 0.05,
+                                pvalueCutoff = 0.5,
                                 qvalueCutoff = 1, 
                                 readable = T)
 ### 5.6.2 KEGG-up ----
@@ -231,7 +231,7 @@ kegg <- clusterProfiler::enrichKEGG(gene = gene$ENTREZID,
                                     keyType = "kegg",
                                     organism = KEGG_database,
                                     pAdjustMethod = "BH",
-                                    pvalueCutoff = 0.05,
+                                    pvalueCutoff = 0.5,
                                     qvalueCutoff = 1)
 # 设置geneID可读格式
 kegg <- setReadable(kegg, OrgDb='org.Hs.eg.db', keyType='ENTREZID')
