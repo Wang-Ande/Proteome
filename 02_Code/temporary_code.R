@@ -139,7 +139,9 @@ ggsave(filename = paste0(dir,"/",gene,"_expr_boxplot.pdf"),
 }
 
 # 多蛋白表达热图 ----
-expr <- read.csv("./01_Data/report.pg_matrix_fill_norma.csv",row.names = 1)
+library(openxlsx)
+library(readr)
+expr <- read.csv("./01_Data/MOLM13_report.pg_matrix_fill_norma.csv",row.names = 1)
 anno <- read.xlsx("./01_Data/data_anno.xlsx",rowNames = TRUE)
 expr_anno <- merge(expr, anno, by.x = 0, by.y = 0, all.x = TRUE)
 
@@ -149,32 +151,39 @@ gene1 <- unlist(lapply(y,function(y) strsplit(as.character(y),";")[[1]][1]))
 expr_anno$gene <- gene1
 
 # 选择目标蛋白
-targeted_prote <- expr_anno[grep("PRDX4|ECH1|ELOVL5|ACAT1", expr_anno$gene),]
+protein_list <- c(# 丝氨酸|一碳单位代谢相关
+                  "PHGDH","PSAT1","PSPH","SLC1A4","SLC1A5", "TYMS", "DHFR", "SHMT2",
+                  "SHMT1","AHCY","MTHFD1","MTHFD2","TK1", "TK2", "CAD",
+                  # 细胞增殖或干性相关
+                  "TP53", "CD69", "AKT1", "CD38", "MKI67", "ENSA", "CDK1",
+                  # 代谢相关
+                  "BCAT1")
+targeted_prote <- expr_anno[expr_anno$gene%in%protein_list,]
 rownames(targeted_prote) <- targeted_prote$gene
-targeted_prote <- targeted_prote[,grep("MOLM13|MV4_11|OCI", colnames(targeted_prote))]
+targeted_prote <- targeted_prote[,grep("MOLM13", colnames(targeted_prote))]
+# 去除4w
+targeted_prote <- targeted_prote[,-grep("4W",colnames(targeted_prote))]
 
 rownames(targeted_prote)
-# 去除同源蛋白（可选）
-targeted_prote <- targeted_prote[-grep("TP53I11|TP53BP1|TP53BP2|TP53I3|TP53RK|CDK11B|CDK13|CDK10|CDK19|CDK12|CDK11A|CDK2P1|URB1|ARRB1|ADARB1|GRB1|CCDC25|LILRB1|ZCRB1|RB1CC1|SCARB1",rownames(targeted_prote)),]
-targeted_prote <- targeted_prote[,order(colnames(targeted_prote))]
 colnames(targeted_prote)
 Sample_order <- c("MOLM13_WT_1", "MOLM13_WT_2", "MOLM13_WT_3", 
                   "MOLM13_2W_2", "MOLM13_2W_3", 
-                  "MOLM13_6W_1", "MOLM13_6W_2", "MOLM13_6W_3",
-                  "MV4_11_WT_1", "MV4_11_WT_2", "MV4_11_WT_3",
-                  "MV4_11_2W_1", "MV4_11_2W_2", "MV4_11_2W_3", 
-                  "MV4_11_6W_1", "MV4_11_6W_2", "MV4_11_6W_3",
-                  "OCI_WT_1", "OCI_WT_2", "OCI_WT_3",
-                  "OCI_2W_1", "OCI_2W_2", "OCI_2W_3", 
-                  "OCI_4W_2","OCI_6W_1", "OCI_6W_2", "OCI_6W_3")
+                  "MOLM13_6W_1", "MOLM13_6W_2", "MOLM13_6W_3")
+                  # "MV4_11_WT_1", "MV4_11_WT_2", "MV4_11_WT_3",
+                  # "MV4_11_2W_1", "MV4_11_2W_2", "MV4_11_2W_3", 
+                  # "MV4_11_6W_2", "MV4_11_6W_3")
+                  #"OCI_WT_1", "OCI_WT_2", "OCI_WT_3",
+                  #"OCI_2W_1", "OCI_2W_2", "OCI_2W_3", 
+                  #"OCI_6W_1", "OCI_6W_2", "OCI_6W_3")
 # Sample_order <- gsub("OCI","MV4_11",Sample_order)
 targeted_prote <- targeted_prote[,Sample_order]
 colnames(targeted_prote)
 
 library(circlize)
 library(ComplexHeatmap)
+library(dplyr)
+library(RColorBrewer)
 expr_matrix <- targeted_prote
-expr_matrix <- targeted_prote[,-grep("4W",colnames(targeted_prote))]
 
 # 定义 Cell line 分组
 cell_lines <- case_when(
@@ -194,7 +203,7 @@ cell_line_colors <- c(
 # 创建分组信息
 sample_groups <- case_when(
   grepl("WT", colnames(expr_matrix)) ~ "WT",
-  grepl("2W|4W", colnames(expr_matrix)) ~ "Low",
+  grepl("2W", colnames(expr_matrix)) ~ "Low",
   grepl("6W", colnames(expr_matrix)) ~ "High"
 )
 
@@ -235,13 +244,28 @@ ha_col <- HeatmapAnnotation(
 log_expr <- log2(expr_matrix + 1)
 scaled_expr <- t(scale(t(log_expr)))  # 每行（每个基因）标准化
 
+# 添加缺失蛋白
+# df_new <- as.data.frame(matrix(0,
+                               # nrow = 2,
+                               # ncol = ncol(log_expr),
+                               # dimnames = list(c("CD69","CD38"), colnames(log_expr))))
+# scaled_expr <- rbind(scaled_expr, df_new)
+# 控制基因顺序
+desired_order <- c("PHGDH", "PSPH", "PSAT1", "BCAT1", "SHMT2", "SHMT1", "AHCY", "SLC1A4", "SLC1A5", 
+                   "MTHFD2", "MTHFD1", "DHFR", "TK1", "TK2", "TYMS", "CAD", 
+                   "TP53", "ENSA", "MKI67", "CDK1", "AKT1")  # CD69, CD38
+scaled_expr <- scaled_expr[desired_order, ]
+# 设置颜色
+coul <- colorRampPalette(brewer.pal(9, "OrRd"))(50)
+
 # plot
 ht <- Heatmap(
   scaled_expr,
   name = "Z-score",
   top_annotation = ha_col,           # 加上分组注释
-  col = circlize::colorRamp2(c(-2, 0, 2), colors = c("#1E90FF", "white", "#FF4500")),
-  cluster_rows = TRUE,
+  #col = coul,
+  col = circlize::colorRamp2(c(-2, 0, 2),transparency = 0, colors = c("#72BCD5", "#F7F7F7", "#E76254")),
+  cluster_rows = FALSE,
   cluster_columns = FALSE,
   show_column_names = TRUE,
   show_row_names = TRUE,
@@ -261,7 +285,7 @@ ht <- draw(ht,
            padding = unit(c(2, 12, 2, 2), "mm"),  # 调整边距
            legend_gap = unit(6, "mm")) # 图例边距
 # res output
-cairo_pdf("./03_Result/DEP/Targeted_proteins_expr_heatmap.pdf", width = 8, height = 2)
+cairo_pdf("./03_Result/DEP/MOLM13_single_fill/Targeted_proteins_expr_heatmap.pdf", width = 5, height = 6)
 ht
 dev.off()
 
@@ -1133,20 +1157,25 @@ library(ggplot2)
 library(stringr)
 library(scales)
 
-# Enrich_res input 
-Enrich_res <- read.csv("./03_result/GO&KEGG/MOLM13_single_fill/High_vs_Con/KEGG_up.csv")
-output_dir <- "./03_result/GO&KEGG/MOLM13_single_fill/High_vs_Con/ggplot2/"
-if (!dir.exists(output_dir)) {
-  dir.create(output_dir, recursive = TRUE)
+folder_path <- "./03_Result/GO&KEGG/OCI_AML2_single_fill/High_vs_Con/ggplot2/"
+if (!dir.exists(folder_path)) {
+  dir.create(folder_path)
+  print(paste("Folder", folder_path, "created."))
+} else {
+  print(paste("Folder", folder_path, "already exists."))
 }
 
+# Enrich_res input 
+Enrich_res <- read.csv("./03_result/GO&KEGG/OCI_AML2_single_fill/High_vs_Con/KEGG_down.csv")
+output_dir <- "./03_result/GO&KEGG/OCI_AML2_single_fill/High_vs_Con/ggplot2/"
+
 # Kegg pathway blacklist screening
-kegg_blacklist <- read.csv("D:/R/RStudio/Code_Box/ClusterProfiler/kegg_blacklist.csv")
+kegg_blacklist <- read.csv("D:/R/R-Project/Code_Box/ClusterProfiler/kegg_blacklist.csv")
 Enrich_res$ID <- gsub("hsa0", "", Enrich_res$ID)
 Enrich_res <- Enrich_res[!Enrich_res$ID%in%kegg_blacklist$id,]
 
 # 保存过滤后的结果
-write.xlsx(Enrich_res, file = file.path(output_dir, "kegg_up.xlsx"))
+write.xlsx(Enrich_res, file = file.path(output_dir, "kegg_down.xlsx"))
 
 if(T){
   # pvalue threshold
@@ -1209,15 +1238,184 @@ if(T){
       limits = c(min(Enrich_res$GeneRatio, na.rm = TRUE), x_max * 1.05)  # 右边界比最大值大 5%
     )
 }
-# print(p2)
+print(p2)
 # 用 ggsave 保存
 
 ggsave(
-  filename = file.path(output_dir, "KEGG_up.pdf"),
+  filename = file.path(output_dir, "KEGG_down.pdf"),
   plot = p2,
   width = 6.5,   # 默认6.5
   height = 7.5,  # 默认7.5
   units = "in"   # 单位可选 "in", "cm", "mm"
 )
 # scale_size_continuous(range = c(3, 12))+  # 调整气泡的大小范围
+
+# 多蛋白表达热图 ----
+library(openxlsx)
+library(readr)
+expr <- read.csv("./01_Data/MV4_11_report.pg_matrix_fill_norma.csv",row.names = 1)
+anno <- read.xlsx("./01_Data/data_anno.xlsx",rowNames = TRUE)
+expr_anno <- merge(expr, anno, by.x = 0, by.y = 0, all.x = TRUE)
+
+# 转换基因名 
+y <- expr_anno$Genes
+gene1 <- unlist(lapply(y,function(y) strsplit(as.character(y),";")[[1]][1]))
+expr_anno$gene <- gene1
+
+# 选择目标蛋白
+protein_list <- c(# 丝氨酸|一碳单位代谢相关
+  "PHGDH","PSAT1","PSPH","SLC1A4","SLC1A5", "TYMS", "DHFR", "SHMT2",
+  "SHMT1","AHCY","MTHFD1","MTHFD2","TK1", "TK2", "CAD",
+  # 细胞增殖或干性相关
+  "TP53", "CD69", "AKT1", "CD38", "MKI67", "ENSA", "CDK1",
+  # 代谢相关
+  "BCAT1")
+targeted_prote <- expr_anno[expr_anno$gene%in%protein_list,]
+rownames(targeted_prote) <- targeted_prote$gene
+targeted_prote <- targeted_prote[,grep("MV4", colnames(targeted_prote))]
+# 去除4w
+targeted_prote <- targeted_prote[,-grep("4W",colnames(targeted_prote))]
+
+rownames(targeted_prote)
+colnames(targeted_prote)
+Sample_order <- c( #"MOLM13_WT_1", "MOLM13_WT_2", "MOLM13_WT_3",
+   # "MOLM13_2W_2", "MOLM13_2W_3",
+   # "MOLM13_6W_1", "MOLM13_6W_2", "MOLM13_6W_3")
+   "MV4_11_WT_1", "MV4_11_WT_2", "MV4_11_WT_3",
+   "MV4_11_2W_1", "MV4_11_2W_2", "MV4_11_2W_3", 
+   "MV4_11_6W_2", "MV4_11_6W_3")
+  # "OCI_WT_1", "OCI_WT_2", "OCI_WT_3",
+  # "OCI_2W_1", "OCI_2W_2", "OCI_2W_3", 
+  # "OCI_6W_1", "OCI_6W_2", "OCI_6W_3")
+# Sample_order <- gsub("OCI","MV4_11",Sample_order)
+targeted_prote <- targeted_prote[,Sample_order]
+colnames(targeted_prote)
+
+# 求平均值
+library(dplyr)
+library(stringr)
+grp <- str_match(colnames(targeted_prote), "MV4_11_(WT|2W|6W)_")[,2]
+
+avg_df <- as.data.frame(targeted_prote) %>%
+  mutate(
+    WT = rowMeans(select(., which(grp == "WT")), na.rm = TRUE),
+    `2W` = rowMeans(select(., which(grp == "2W")), na.rm = TRUE),
+    `6W` = rowMeans(select(., which(grp == "6W")), na.rm = TRUE)
+  ) %>%
+  select(WT, `2W`, `6W`)
+
+avg_df
+
+library(circlize)
+library(ComplexHeatmap)
+library(dplyr)
+library(RColorBrewer)
+expr_matrix <- avg_df
+
+# 定义 Cell line 分组
+cell_lines <- case_when(
+  grepl("MOLM13", colnames(expr_matrix)) ~ "MOLM13",
+  grepl("MV4_11", colnames(expr_matrix)) ~ "MV4_11",
+  grepl("OCI", colnames(expr_matrix)) ~ "OCI_AML2"
+)
+cell_lines <- factor(cell_lines, levels = c("MOLM13", "MV4_11", "OCI_AML2"))
+
+# 为 Cell line 设置颜色
+cell_line_colors <- c(
+  MOLM13 = "#66C2A5",
+  MV4_11 = "#8DA0CB",
+  OCI_AML2 = "#FC8D62"
+)
+
+# 创建分组信息
+sample_groups <- case_when(
+  grepl("WT", colnames(expr_matrix)) ~ "WT",
+  grepl("2W", colnames(expr_matrix)) ~ "Low",
+  grepl("6W", colnames(expr_matrix)) ~ "High"
+)
+
+# 转换为因子，设置顺序
+sample_groups <- factor(sample_groups, levels = c("WT", "Low", "High"))
+
+# 创建颜色映射
+group_colors <- c(WT = "#6388B4", Low = "#FFAE34", High = "#EF6F6A")
+
+# approach1 同时显示细胞系和分组！！！！！！！！！！！！！！！！！！！！！！！！
+ha_col <- HeatmapAnnotation(
+  Cell_line = cell_lines,
+  Group = sample_groups,
+  col = list(
+    Cell_line = cell_line_colors, #（Cell line 在上面）
+    Group = group_colors
+  ),
+  annotation_name_side = "right",
+  annotation_legend_param = list(
+    Cell_line = list(title = "Cell line", title_gp = gpar(fontface = "bold", fontsize = 9), labels_gp = gpar(fontsize = 8)),
+    Group = list(title = "Group", title_gp = gpar(fontface = "bold", fontsize = 9), labels_gp = gpar(fontsize = 8))
+  ),
+  annotation_height = unit(c(5, 5), "mm")  # 控制两个注释行的高度
+)
+
+# approach2 只显示分组！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+# 创建 group 的列注释对象
+ha_col <- HeatmapAnnotation(
+  Group = sample_groups,
+  col = list(Group = group_colors),
+  annotation_name_side = "right",
+  show_annotation_name = FALSE,
+  simple_anno_size = unit(0, "mm"),  # ✅ 隐藏彩色条
+  annotation_legend_param = list(title = "Group", 
+                                 title_gp = gpar(fontface = "bold",fontsize = 10),
+                                 direction = "horizontal",  # ✅ 横排
+                                 nrow = 1,                  # ✅ 强制一行排完
+                                 labels_gp = gpar(fontsize = 8))
+)
+
+# scale
+log_expr <- log2(expr_matrix + 1)
+scaled_expr <- t(scale(t(log_expr)))  # 每行（每个基因）标准化
+# 控制基因顺序
+desired_order <- c("PHGDH", "PSPH", "PSAT1", "BCAT1", "SHMT2", "SHMT1", "SLC1A4", "SLC1A5", 
+                   "MTHFD2", "MTHFD1", "DHFR", "TK1", "TK2", "TYMS", "CAD",
+                   "TP53", "ENSA","MKI67", "CDK1", "AKT1")  #  "CD69", "CD38", 
+scaled_expr <- scaled_expr[desired_order, ]
+# 设置颜色
+coul <- colorRampPalette(brewer.pal(9, "OrRd"))(50)
+
+# plot
+ht <- Heatmap(
+  scaled_expr,
+  name = "Z-score",
+  top_annotation = ha_col,           # 加上分组注释
+  #col = coul,
+  col = circlize::colorRamp2(c(-1.5, 0, 1.5), transparency = 0, colors = c("#376795", "#FFFFFF", "#E76254")),
+  # ✅ 按组分块
+  column_split = sample_groups,     # 或 factor(sample_groups, levels=c("WT","ER","LR"))
+  # ✅ 组间留白
+  column_gap = unit(0.2, "mm"),       # 你想更宽就调大，例如 5~8 mm
+  cluster_rows = FALSE,
+  cluster_columns = FALSE,
+  show_column_names = FALSE,
+  show_row_names = TRUE,
+  column_names_side = "top",     # ✅ 列名放上方
+  column_names_rot  = 45,        # ✅ 你想要斜着就改角度（比如 45/60/90）
+  row_names_gp = gpar(fontsize = 9),
+  column_names_gp = gpar(fontsize = 7),
+  heatmap_legend_param = list(title = "Z-score", 
+                              title_gp = gpar(fontface = "bold",fontsize = 10),
+                              direction = "horizontal",          # ✅ 横向图例
+                              legend_width = unit(4, "cm"),      # ✅ 横向用 legend_width（别再用 legend_height）
+                              grid_width = unit(0.35, "cm"),    # 色块宽度
+                              labels_gp = gpar(fontsize = 8)   # 标签字体
+  ))
+ht <- draw(ht,
+           heatmap_legend_side = "bottom",
+           annotation_legend_side = "bottom",
+           merge_legend = TRUE,
+           padding = unit(c(2, 12, 2, 2), "mm"),  # 调整边距
+           legend_gap = unit(6, "mm")) # 图例边距
+# res output
+cairo_pdf("./03_Result/DEP/MV4_11_single_fill/Targeted_proteins_expr_heatmap_aver.pdf", width = 2.8, height = 5.4)
+ht
+dev.off()
 

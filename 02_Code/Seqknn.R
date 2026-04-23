@@ -53,10 +53,10 @@ NA_ratio_protein <- NA_ratio_protein[NA_ratio_protein$NA_ratio_protein < cutoff_
 
 # 2. multiUS::seqKNNimp ----
 data <- data_input[rownames(data_input)%in%rownames(NA_ratio_protein),]
-data_fill <- multiUS::seqKNNimp(data = data,k = 8)
+data_fill <- multiUS::seqKNNimp(data = data,k = 8)  # log2之后的数据进行填补
 min(data_fill)
 
-write.csv(data_fill,file = "./01_Data/MV4_11_report.pg_matrix_fill.csv")
+write.csv(data_fill,file = "./01_Data/MV4_11_rep ort.pg_matrix_fill.csv")
 
 # 3. Normalization -----------------------------------------------------------
 # 
